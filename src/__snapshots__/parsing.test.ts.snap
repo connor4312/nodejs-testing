@@ -1,0 +1,529 @@
+// Vitest Snapshot v1
+
+exports[`extract > extracts aliased imports 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts aliased require 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts default import 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts default require 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts destructed require 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts named imports 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts star import 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 6,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 4,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 9,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 7,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 13,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 11,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 14,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 3,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
+exports[`extract > extracts ts import mangled 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 8,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 6,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 11,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 9,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 14,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 12,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 15,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 5,
+      },
+    },
+    "name": "math",
+  },
+]
+`;

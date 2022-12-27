@@ -1,0 +1,46 @@
+{
+  "name": "nodejs-testing",
+  "displayName": "Testing for node:test",
+  "description": "Test integration for node:test native tests",
+  "publisher": "connor4312",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.js"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "node .esbuild.js --minify",
+    "compile": "node .esbuild.js --minify",
+    "watch": "node .esbuild.js --watch",
+    "test": "tsc --noEmit && vitest run"
+  },
+  "devDependencies": {
+    "@types/estraverse": "^5.1.2",
+    "@types/estree": "^1.0.0",
+    "@types/node": "16.x",
+    "@types/picomatch": "^2.3.0",
+    "@types/vscode": "^1.74.0",
+    "@vscode/test-electron": "^2.2.0",
+    "acorn": "^8.8.1",
+    "esbuild": "^0.16.10",
+    "typescript": "^4.9.3",
+    "vitest": "^0.26.2"
+  },
+  "prettier": {
+    "printWidth": 100
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.17",
+    "acorn-loose": "^8.3.0",
+    "data-uri-to-buffer": "^4.0.0",
+    "estraverse": "^5.3.0",
+    "picomatch": "^2.3.1",
+    "tap-parser": "^12.0.1"
+  }
+}
