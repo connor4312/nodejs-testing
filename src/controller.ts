@@ -1,14 +1,16 @@
 import { createHash } from "crypto";
-import { readFile } from "fs/promises";
-import * as path from "path";
+import { promises as fs } from "fs";
 import picomatch from "picomatch";
 import * as vscode from "vscode";
 import { DisposableStore } from "./disposable";
 import { last } from "./iterable";
+import { getContainingItemsForFile, ICreateOpts, ItemType, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
-import { parseSourceMap } from "./source-map";
+import { TestRunner } from "./runner";
+import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
+const watcherPattern = "**/*.{cjs,mjs,js}";
 
 export class Controller {
   private readonly disposable = new DisposableStore();
@@ -19,6 +21,7 @@ export class Controller {
     /* uri */ string,
     {
       hash: number;
+      sourceMap: ISourceMapMaintainer;
       items: Map<string, vscode.TestItem>;
     }
   >();
@@ -26,7 +29,9 @@ export class Controller {
   constructor(
     private readonly ctrl: vscode.TestController,
     private readonly wf: vscode.WorkspaceFolder,
-    private readonly include: string,
+    private readonly smStore: SourceMapStore,
+    runner: TestRunner,
+    include: string[],
     exclude: string[]
   ) {
     this.includeTest = picomatch(include, {
@@ -36,21 +41,22 @@ export class Controller {
     });
 
     ctrl.resolveHandler = this.resolveHandler();
-    ctrl.createRunProfile("Run", vscode.TestRunProfileKind.Run, this.createRunHandler(false), true);
+    ctrl.createRunProfile(
+      "Run",
+      vscode.TestRunProfileKind.Run,
+      runner.makeHandler(wf, ctrl, false),
+      true
+    );
     ctrl.createRunProfile(
       "Debug",
       vscode.TestRunProfileKind.Debug,
-      this.createRunHandler(true),
+      runner.makeHandler(wf, ctrl, true),
       true
     );
   }
 
   public dispose() {
     this.disposable.dispose();
-  }
-
-  private createRunHandler(debug: boolean) {
-    return (request: vscode.TestRunRequest, token: vscode.CancellationToken) => {};
   }
 
   private resolveHandler() {
@@ -68,7 +74,7 @@ export class Controller {
   }
 
   private async _syncFile(uri: vscode.Uri, contents?: string) {
-    contents ??= await readFile(uri.fsPath, "utf8");
+    contents ??= await fs.readFile(uri.fsPath, "utf8");
 
     // cheap test for relevancy:
     if (!contents.includes("node:test")) {
@@ -90,7 +96,8 @@ export class Controller {
       return;
     }
 
-    const sourceMap = await parseSourceMap(uri, contents);
+    const smMaintainer = previous?.sourceMap ?? this.smStore.maintain(uri);
+    const sourceMap = await smMaintainer.refresh(contents);
     const add = (
       parent: vscode.TestItem,
       node: IParsedNode,
@@ -100,6 +107,7 @@ export class Controller {
       let item = parent.children.get(node.name);
       if (!item) {
         item = this.ctrl.createTestItem(node.name, node.name, start.uri);
+        testMetadata.set(item, { type: ItemType.Test });
         parent.children.add(item);
       }
       item.range = new vscode.Range(start.range.start, end.range.end);
@@ -142,7 +150,7 @@ export class Controller {
         node.location.start.column
       );
       const end = sourceMap.originalPositionFor(node.location.end.line, node.location.end.column);
-      const file = last(this.getContainingItemsForFile(start.uri, true))!.item!;
+      const file = last(this.getContainingItemsForFile(start.uri, { compiledFile: uri }))!.item!;
       diagnosticCollection.delete(start.uri);
       newTestsInFile.set(node.name, add(file, node, start, end));
     }
@@ -155,7 +163,7 @@ export class Controller {
       }
     }
 
-    this.testsInFiles.set(uri.toString(), { items: newTestsInFile, hash });
+    this.testsInFiles.set(uri.toString(), { items: newTestsInFile, hash, sourceMap: smMaintainer });
   }
 
   private deleteFileTests(uri: vscode.Uri) {
@@ -163,11 +171,11 @@ export class Controller {
     if (!previous) {
       return;
     }
-    
+
     this.testsInFiles.delete(uri.toString());
     for (const [id, item] of previous.items) {
       diagnosticCollection.delete(item.uri!);
-      const itemsIt = this.getContainingItemsForFile(item.uri!, false);
+      const itemsIt = this.getContainingItemsForFile(item.uri!);
 
       // keep 'deleteFrom' as the node to remove if there are no nested children
       let deleteFrom: { items: vscode.TestItemCollection; id: string } | undefined;
@@ -195,14 +203,14 @@ export class Controller {
   }
 
   private async startWatchingWorkspace() {
-    const pattern = new vscode.RelativePattern(this.wf, this.include);
+    const pattern = new vscode.RelativePattern(this.wf, watcherPattern);
     const watcher = this.disposable.add(vscode.workspace.createFileSystemWatcher(pattern));
 
     watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
     watcher.onDidChange((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
     watcher.onDidDelete((uri) => this.includeTest(uri.fsPath) && this.deleteFileTests(uri));
 
-    for (const file of await vscode.workspace.findFiles(this.include)) {
+    for (const file of await vscode.workspace.findFiles(watcherPattern)) {
       if (this.includeTest(file.fsPath)) {
         this._syncFile(file);
       }
@@ -210,33 +218,8 @@ export class Controller {
   }
 
   /** Gets the test collection for a file of the given URI, descending from the root. */
-  private *getContainingItemsForFile(
-    uri: vscode.Uri,
-    create: boolean
-  ): IterableIterator<{ children: vscode.TestItemCollection; item?: vscode.TestItem }> {
-    const folderPath = this.wf.uri.path.split("/");
-    const filePath = uri.path.split("/");
-
-    let children = this.ctrl.items;
-    yield { children };
-    for (let i = folderPath.length; i < filePath.length; i++) {
-      const existing = children.get(filePath[i]);
-      if (existing) {
-        children = existing.children;
-        yield { children, item: existing };
-      } else if (!create) {
-        break;
-      } else {
-        const item = this.ctrl.createTestItem(
-          filePath[i],
-          filePath[i],
-          uri.with({ path: filePath.slice(0, i + 1).join(path.sep) })
-        );
-        children.add(item);
-        children = item.children;
-        yield { children, item };
-      }
-    }
+  private getContainingItemsForFile(uri: vscode.Uri, createOpts?: ICreateOpts) {
+    return getContainingItemsForFile(this.wf, this.ctrl, uri, createOpts);
   }
 }
 

@@ -23,13 +23,9 @@ const identityMapping = (file: vscode.Uri): IMappingAccessor => ({
 
 const smMappingAccessor = (file: vscode.Uri, sm: TraceMap): IMappingAccessor => ({
   originalPositionFor(line, column) {
-    const {
-      source,
-      line: smLine,
-      column: smCol,
-    } = originalPositionFor(sm, { line, column });
+    const { source, line: smLine, column: smCol } = originalPositionFor(sm, { line, column });
     if (!source) {
-    // VS Code positions are base 0, adjust the line
+      // VS Code positions are base 0, adjust the line
       return new vscode.Location(file, new vscode.Position(line - 1, column));
     }
 
@@ -63,7 +59,7 @@ export const parseSourceMap = (
     return fs
       .readFile(sourceMapPath, "utf8")
       .then((c) => smMappingAccessor(path, new TraceMap(c, pathAsStr)))
-      .catch((c) => identityMapping(path));
+      .catch(() => identityMapping(path));
   } catch {
     return identityMapping(path);
   }

@@ -13,6 +13,47 @@
   "activationEvents": [
     "workspaceContains:**/*.js"
   ],
+  "contributes": {
+    "configuration": [
+      {
+        "title": "Node.js Test Runner",
+        "properties": {
+          "nodejs-testing.nodejsPath": {
+            "type": "string",
+            "default": "node",
+            "description": "Path to the Node.js binary used to run tests"
+          },
+          "nodejs-testing.include": {
+            "type": "array",
+            "markdownDescription": "Paths in which to find tests. Defaults to the [Node.js default patterns](https://nodejs.org/api/test.html#test-runner-execution-model).",
+            "default": [
+              "**/{test,test-*,*.test,*-test,*_test}.{mjs,cjs,js}",
+              "**/test/**/*.{mjs,cjs,js}"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "nodejs-testing.exclude": {
+            "type": "array",
+            "markdownDescription": "Paths to exclude from test discovery. Defaults to the [Node.js default pattern](https://nodejs.org/api/test.html#test-runner-execution-model).",
+            "default": [
+              "**/node_modules/**"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "nodejs-testing.concurrency": {
+            "type": "number",
+            "format": "integer",
+            "description": "How many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.",
+            "default": 0
+          }
+        }
+      }
+    ]
+  },
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "node .esbuild.js --minify",
@@ -36,11 +77,15 @@
     "printWidth": 100
   },
   "dependencies": {
+    "@hediet/json-rpc": "^0.3.0",
+    "@hediet/json-rpc-streams": "https://gitpkg.now.sh/hediet/typed-json-rpc/json-rpc-streams?d4d660cf19acd424ef4f782822efc34c01f97c1a",
     "@jridgewell/trace-mapping": "^0.3.17",
     "acorn-loose": "^8.3.0",
+    "ansi-colors": "^4.1.3",
     "data-uri-to-buffer": "^4.0.0",
     "estraverse": "^5.3.0",
     "picomatch": "^2.3.1",
+    "stacktrace-parser": "^0.1.10",
     "tap-parser": "^12.0.1"
   }
 }

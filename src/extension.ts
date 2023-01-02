@@ -1,10 +1,22 @@
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
+import { TestRunner } from "./runner";
+import { SourceMapStore } from "./source-map-store";
 
 export async function activate(context: vscode.ExtensionContext) {
-  const includePattern = new ConfigValue("include", "**/*.{mjs,js}");
+  const smStore = new SourceMapStore();
+  const includePattern = new ConfigValue("include", [
+    "**/{test,test-*,*.test,*-test,*_test}.{mjs,cjs,js}",
+    "**/test/**/*.{mjs,cjs,js}",
+  ]);
   const excludePatterns = new ConfigValue("exclude", ["**/node_modules/**"]);
+  const runner = new TestRunner(
+    smStore,
+    new ConfigValue("concurrency", 0),
+    new ConfigValue("nodejsPath", "node"),
+    context.extensionUri.fsPath
+  );
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
@@ -27,6 +39,8 @@ export async function activate(context: vscode.ExtensionContext) {
               `node:test's in ${folder.name}`
             ),
             folder,
+            smStore,
+            runner,
             includePattern.value,
             excludePatterns.value
           )

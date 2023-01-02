@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 const sectionName = "nodejs-testing";
-const section = vscode.workspace.getConfiguration("nodejs-testing");
+const section = vscode.workspace.getConfiguration(sectionName);
 
 export class ConfigValue<T> {
   private readonly changeEmitter = new vscode.EventEmitter<T>();
@@ -14,14 +14,18 @@ export class ConfigValue<T> {
     return this._value;
   }
 
-  constructor(public readonly key: string, defaultValue: T) {
+  public get key() {
+    return `${sectionName}.${this.sectionKey}`;
+  }
+
+  constructor(private readonly sectionKey: string, defaultValue: T) {
     this.changeListener = vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration(`${sectionName}.key`)) {
-        this._value = section.get(key) ?? defaultValue;
+      if (e.affectsConfiguration(this.key)) {
+        this._value = section.get(sectionKey) ?? defaultValue;
       }
     });
 
-    this._value = section.get(key) ?? defaultValue;
+    this._value = section.get(sectionKey) ?? defaultValue;
   }
 
   public dispose() {
