@@ -1,8 +1,9 @@
 import { createHash } from "crypto";
 import { promises as fs } from "fs";
+import * as path from "path";
 import picomatch from "picomatch";
 import * as vscode from "vscode";
-import { DisposableStore } from "./disposable";
+import { DisposableStore, MutableDisposable } from "./disposable";
 import { last } from "./iterable";
 import { getContainingItemsForFile, ICreateOpts, ItemType, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
@@ -10,11 +11,25 @@ import { TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
-const watcherPattern = "**/*.{cjs,mjs,js}";
+const jsExtensions = ".{mjs,cjs,js}";
+
+/** @see https://nodejs.org/api/test.html#test-runner-execution-model */
+const testPatterns = [
+  `**/{test,test-*,*.test,*-test,*_test}${jsExtensions}`,
+  `**/test/**/*${jsExtensions}`,
+];
+
+const forceForwardSlashes = (p: string) => p.replace(/\\/g, "/");
 
 export class Controller {
   private readonly disposable = new DisposableStore();
+  private readonly watcher = this.disposable.add(new MutableDisposable());
+  /** Include pattern for workspace foles. */
+  private readonly pattern: vscode.RelativePattern;
+  /** Pattern to check included files */
   private readonly includeTest: picomatch.Matcher;
+  /** Promise that resolves when workspace files have been scanned */
+  private initialFileScan?: Promise<void>;
 
   /** Mapping of the top-level tests found in each compiled */
   private readonly testsInFiles = new Map<
@@ -27,20 +42,33 @@ export class Controller {
   >();
 
   constructor(
-    private readonly ctrl: vscode.TestController,
+    public readonly ctrl: vscode.TestController,
     private readonly wf: vscode.WorkspaceFolder,
     private readonly smStore: SourceMapStore,
     runner: TestRunner,
     include: string[],
     exclude: string[]
   ) {
-    this.includeTest = picomatch(include, {
-      ignore: exclude,
-      cwd: wf.uri.fsPath,
-      posixSlashes: true,
-    });
+    include = include.map((p) => path.posix.normalize(forceForwardSlashes(p)));
+    exclude = exclude.map((p) => path.posix.normalize(forceForwardSlashes(p)));
+
+    const watcherGlob =
+      include.length <= 1
+        ? path.posix.join(include[0] || "./", `**/*${jsExtensions}`)
+        : `{${include.join(",")}}/**/*${jsExtensions}`;
+    this.pattern = new vscode.RelativePattern(wf, watcherGlob);
+
+    this.includeTest = picomatch(
+      include.flatMap((i) => testPatterns.map((tp) => path.posix.join(i, tp))),
+      {
+        ignore: exclude,
+        cwd: wf.uri.fsPath,
+        posixSlashes: true,
+      }
+    );
 
     ctrl.resolveHandler = this.resolveHandler();
+    ctrl.refreshHandler = () => this.scanFiles();
     ctrl.createRunProfile(
       "Run",
       vscode.TestRunProfileKind.Run,
@@ -62,7 +90,11 @@ export class Controller {
   private resolveHandler() {
     return async (test?: vscode.TestItem) => {
       if (!test) {
-        await this.startWatchingWorkspace();
+        if (this.watcher.value) {
+          await this.initialFileScan; // will have been set when the watcher was created
+        } else {
+          await this.startWatchingWorkspace();
+        }
       }
     };
   }
@@ -202,19 +234,41 @@ export class Controller {
     }
   }
 
-  private async startWatchingWorkspace() {
-    const pattern = new vscode.RelativePattern(this.wf, watcherPattern);
-    const watcher = this.disposable.add(vscode.workspace.createFileSystemWatcher(pattern));
+  public async startWatchingWorkspace() {
+    const watcher = (this.watcher.value = vscode.workspace.createFileSystemWatcher(this.pattern));
 
     watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
     watcher.onDidChange((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
     watcher.onDidDelete((uri) => this.includeTest(uri.fsPath) && this.deleteFileTests(uri));
 
-    for (const file of await vscode.workspace.findFiles(watcherPattern)) {
+    const promise = (this.initialFileScan = this.scanFiles());
+    await promise;
+  }
+
+  private async scanFiles() {
+    if (!this.watcher.value) {
+      // starting the watcher will call this again
+      return this.startWatchingWorkspace();
+    }
+
+    const toRemove = new Set(this.testsInFiles.keys());
+    const todo = [];
+    for (const file of await vscode.workspace.findFiles(this.pattern)) {
       if (this.includeTest(file.fsPath)) {
-        this._syncFile(file);
+        todo.push(this._syncFile(file));
+        toRemove.delete(file.toString());
       }
     }
+
+    for (const uriStr of toRemove) {
+      this.deleteFileTests(vscode.Uri.parse(uriStr));
+    }
+
+    if (this.testsInFiles.size === 0) {
+      this.watcher.dispose(); // stop watching if there are no tests discovered
+    }
+
+    await Promise.all(todo);
   }
 
   /** Gets the test collection for a file of the given URI, descending from the root. */

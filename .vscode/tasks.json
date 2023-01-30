@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "compile:testcases",
+      "group": "build",
+      "problemMatcher": [],
+      "label": "npm: compile:testcases",
+      "detail": "node testCases/.esbuild.js",
+      "presentation": {
+        "reveal": "silent"
+      }
+    }
+  ]
+}

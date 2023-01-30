@@ -30,7 +30,7 @@ export class TestRunner {
 
   public makeHandler(wf: vscode.WorkspaceFolder, ctrl: vscode.TestController, debug: boolean) {
     return async (request: vscode.TestRunRequest, token: vscode.CancellationToken) => {
-      const files = this.solveArguments(ctrl, request);
+      const files = await this.solveArguments(ctrl, request);
       const concurrency = this.concurrency.value || cpus().length;
       const run = ctrl.createTestRun(request);
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
@@ -201,7 +201,7 @@ export class TestRunner {
     return sessionPromise;
   }
 
-  private solveArguments(ctrl: vscode.TestController, request: vscode.TestRunRequest) {
+  private async solveArguments(ctrl: vscode.TestController, request: vscode.TestRunRequest) {
     const exclude = new Set(request.exclude);
     const includeFiles = new Map<string, ITestRunFile>();
     const addInclude = (test: vscode.TestItem) => {
@@ -261,6 +261,7 @@ export class TestRunner {
     if (request.include) {
       request.include.forEach(addInclude);
     } else {
+      await ctrl.resolveHandler!(undefined);
       for (const [, item] of ctrl.items) {
         addInclude(item);
       }

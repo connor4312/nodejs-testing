@@ -4,6 +4,17 @@
 // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 {
   "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "caseName",
+      "type": "pickString",
+      "description": "Integration test to run",
+      "options": [
+        "simple"
+        // add more test names here as needed
+      ]
+    }
+  ],
   "configurations": [
     {
       "name": "Run Extension",
@@ -16,14 +27,28 @@
       // "autoAttachChildProcesses": true,
       "outFiles": ["${workspaceFolder}/out/**/*.js"]
     },
-		{
-			"name": "Attach",
-			"port": 9229,
-			"request": "attach",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"type": "node"
-		}
+    {
+      "name": "Run Integration Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/test/workspace-runner",
+        "${workspaceFolder}/testCases/${input:caseName}/workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/testCases/${input:caseName}/runner.js",
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "npm: compile:testcases"
+    },
+    {
+      "name": "Attach",
+      "port": 9229,
+      "request": "attach",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    }
   ]
 }

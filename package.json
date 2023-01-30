@@ -11,7 +11,8 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:**/*.js"
+    "workspaceContains:**/*.{js,cjs,mjs}",
+    "onCommand:nodejs-testing.get-controllers-for-test"
   ],
   "contributes": {
     "configuration": [
@@ -25,10 +26,9 @@
           },
           "nodejs-testing.include": {
             "type": "array",
-            "markdownDescription": "Paths in which to find tests. Defaults to the [Node.js default patterns](https://nodejs.org/api/test.html#test-runner-execution-model).",
+            "markdownDescription": "Directories which to find tests, relative to your workspace folder. Files that match the [Node.js test patterns](https://nodejs.org/api/test.html#test-runner-execution-model) will be included.\n\nNote: if you compile your code, this should point to the location of your compiled files, not your source files.",
             "default": [
-              "**/{test,test-*,*.test,*-test,*_test}.{mjs,cjs,js}",
-              "**/test/**/*.{mjs,cjs,js}"
+              "./"
             ],
             "items": {
               "type": "string"
@@ -59,17 +59,28 @@
     "vscode:prepublish": "node .esbuild.js --minify",
     "compile": "node .esbuild.js --minify",
     "watch": "node .esbuild.js --watch",
-    "test": "tsc --noEmit && vitest run"
+    "compile:testcases": "node testCases/.esbuild.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "tsc --noEmit && vitest run",
+    "test:integration": "node out/test/run"
   },
   "devDependencies": {
     "@types/estraverse": "^5.1.2",
     "@types/estree": "^1.0.0",
+    "@types/glob": "^8.0.1",
+    "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
     "@types/picomatch": "^2.3.0",
+    "@types/sinon": "^10.0.13",
     "@types/vscode": "^1.74.0",
     "@vscode/test-electron": "^2.2.0",
     "acorn": "^8.8.1",
-    "esbuild": "^0.16.10",
+    "chai": "^4.3.7",
+    "chalk": "^5.2.0",
+    "esbuild": "^0.17.5",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "sinon": "^15.0.1",
     "typescript": "^4.9.3",
     "vitest": "^0.26.2"
   },
