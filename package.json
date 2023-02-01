@@ -73,7 +73,7 @@
     "@types/picomatch": "^2.3.0",
     "@types/sinon": "^10.0.13",
     "@types/vscode": "^1.74.0",
-    "@vscode/test-electron": "^2.2.0",
+    "@vscode/test-electron": "^2.2.3",
     "acorn": "^8.8.1",
     "chai": "^4.3.7",
     "chalk": "^5.2.0",

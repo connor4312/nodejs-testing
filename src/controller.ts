@@ -7,7 +7,7 @@ import { DisposableStore, MutableDisposable } from "./disposable";
 import { last } from "./iterable";
 import { getContainingItemsForFile, ICreateOpts, ItemType, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
-import { TestRunner } from "./runner";
+import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
@@ -24,6 +24,7 @@ const forceForwardSlashes = (p: string) => p.replace(/\\/g, "/");
 export class Controller {
   private readonly disposable = new DisposableStore();
   private readonly watcher = this.disposable.add(new MutableDisposable());
+  private readonly didChangeEmitter = new vscode.EventEmitter<void>();
   /** Include pattern for workspace foles. */
   private readonly pattern: vscode.RelativePattern;
   /** Pattern to check included files */
@@ -40,6 +41,13 @@ export class Controller {
       items: Map<string, vscode.TestItem>;
     }
   >();
+
+  /** Change emtiter used for testing, to pick up when the file watcher detects a chagne */
+  public readonly onDidChange = this.didChangeEmitter.event;
+  /** Handler for a normal test run */
+  public readonly runHandler: RunHandler;
+  /** Handler for a test debug run */
+  public readonly debugHandler: RunHandler;
 
   constructor(
     public readonly ctrl: vscode.TestController,
@@ -68,19 +76,12 @@ export class Controller {
     );
 
     ctrl.resolveHandler = this.resolveHandler();
+    this.runHandler = runner.makeHandler(wf, ctrl, false);
+    this.debugHandler = runner.makeHandler(wf, ctrl, true);
+
     ctrl.refreshHandler = () => this.scanFiles();
-    ctrl.createRunProfile(
-      "Run",
-      vscode.TestRunProfileKind.Run,
-      runner.makeHandler(wf, ctrl, false),
-      true
-    );
-    ctrl.createRunProfile(
-      "Debug",
-      vscode.TestRunProfileKind.Debug,
-      runner.makeHandler(wf, ctrl, true),
-      true
-    );
+    ctrl.createRunProfile("Run", vscode.TestRunProfileKind.Run, this.runHandler, true);
+    ctrl.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, this.debugHandler, true);
   }
 
   public dispose() {
@@ -196,6 +197,7 @@ export class Controller {
     }
 
     this.testsInFiles.set(uri.toString(), { items: newTestsInFile, hash, sourceMap: smMaintainer });
+    this.didChangeEmitter.fire();
   }
 
   private deleteFileTests(uri: vscode.Uri) {
@@ -223,7 +225,7 @@ export class Controller {
       }
 
       if (!last!.get(id)) {
-        return;
+        break;
       }
 
       if (deleteFrom) {
@@ -232,6 +234,8 @@ export class Controller {
         last!.delete(id);
       }
     }
+
+    this.didChangeEmitter.fire();
   }
 
   public async startWatchingWorkspace() {

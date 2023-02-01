@@ -16,6 +16,11 @@ let socketCounter = 0;
 const socketDir = process.platform === "win32" ? "\\\\.\\pipe\\" : tmpdir();
 const getRandomPipe = () => join(socketDir, `nodejs-test.${process.pid}-${socketCounter++}.sock`);
 
+export type RunHandler = (
+  request: vscode.TestRunRequest,
+  token: vscode.CancellationToken
+) => Promise<void>;
+
 export class TestRunner {
   private readonly workerPath: string;
 
@@ -28,9 +33,17 @@ export class TestRunner {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
   }
 
-  public makeHandler(wf: vscode.WorkspaceFolder, ctrl: vscode.TestController, debug: boolean) {
-    return async (request: vscode.TestRunRequest, token: vscode.CancellationToken) => {
+  public makeHandler(
+    wf: vscode.WorkspaceFolder,
+    ctrl: vscode.TestController,
+    debug: boolean
+  ): RunHandler {
+    return async (request, token) => {
       const files = await this.solveArguments(ctrl, request);
+      if (token.isCancellationRequested) {
+        return;
+      }
+
       const concurrency = this.concurrency.value || cpus().length;
       const run = ctrl.createTestRun(request);
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
@@ -49,7 +62,7 @@ export class TestRunner {
 
       const mapLocation = async (path: string, line: number | null, col: number | null) => {
         const smMaintainer = this.smStore.maintain(vscode.Uri.file(path));
-        token.onCancellationRequested(() => smMaintainer.dispose());
+        run.token.onCancellationRequested(() => smMaintainer.dispose());
         const sourceMap = await (smMaintainer.value || smMaintainer.refresh());
         return sourceMap.originalPositionFor(line || 1, col || 0);
       };
@@ -57,11 +70,11 @@ export class TestRunner {
       try {
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();
-          token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
+          run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
 
           let outputQueue = Promise.resolve();
           const server = createServer((stream) => {
-            token.onCancellationRequested(stream.end, stream);
+            run.token.onCancellationRequested(stream.end, stream);
             const reg = Contract.registerServerToStream(
               contract,
               new NodeJsMessageStream(stream, stream),
@@ -129,11 +142,11 @@ export class TestRunner {
               })
               .catch(reject);
           });
-          token.onCancellationRequested(server.close, server);
+          run.token.onCancellationRequested(server.close, server);
           server.once("error", reject);
           server.listen(socket);
 
-          this.spawnWorker(wf, debug, socket, token).then(
+          this.spawnWorker(wf, debug, socket, run.token).then(
             () => reject(new Error("Worker executed without signalling its completion")),
             reject
           );
@@ -261,7 +274,9 @@ export class TestRunner {
     if (request.include) {
       request.include.forEach(addInclude);
     } else {
-      await ctrl.resolveHandler!(undefined);
+      // this only work on VS Code Insiders 1.76 and above 🤦‍♂️
+      // https://github.com/microsoft/vscode/pull/173001
+      await ctrl.resolveHandler?.(undefined);
       for (const [, item] of ctrl.items) {
         addInclude(item);
       }

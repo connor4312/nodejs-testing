@@ -1,5 +1,5 @@
-const { describe, it } = require("node:test");
-const { strictEqual } = require("node:assert");
+import { strictEqual } from "assert";
+import { describe, it } from "node:test";
 
 describe("math", () => {
   it("addition", () => {
@@ -7,6 +7,6 @@ describe("math", () => {
   });
 
   it("subtraction", () => {
-    strictEqual(1 - 1, 0);
+    strictEqual(1 - 1, -2);
   });
 });

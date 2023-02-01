@@ -46,7 +46,7 @@ export function* getContainingItemsForFile(
         item,
         i === filePath.length - 1
           ? { type: ItemType.File, compiledIn: createOpts.compiledFile }
-          : { type: ItemType.Test }
+          : { type: ItemType.Directory }
       );
       children.add(item);
       children = item.children;

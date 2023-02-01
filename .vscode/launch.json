@@ -10,7 +10,8 @@
       "type": "pickString",
       "description": "Integration test to run",
       "options": [
-        "simple"
+        "simple",
+        "sourcemapped"
         // add more test names here as needed
       ]
     }
