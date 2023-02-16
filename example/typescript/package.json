@@ -1,6 +1,0 @@
-{
-  "scripts": {
-    "compile": "tsc -p tsconfig.json",
-    "watch": "tsc -p tsconfig.json --watch"
-  }
-}

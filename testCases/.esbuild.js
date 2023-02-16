@@ -20,6 +20,6 @@ const ctx = esbuild.context({
 ctx
   .then((ctx) => (watch ? ctx.watch() : ctx.rebuild()))
   .then(
-    () => process.exit(0),
+    () => !watch && process.exit(0),
     () => process.exit(1)
   );

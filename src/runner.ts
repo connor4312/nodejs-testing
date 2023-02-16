@@ -9,6 +9,7 @@ import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { last } from "./iterable";
 import { getContainingItemsForFile, ItemType, testMetadata } from "./metadata";
+import { OutputQueue } from "./outputQueue";
 import { CompleteStatus, contract, ITestRunFile, Result } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
 
@@ -68,11 +69,11 @@ export class TestRunner {
       };
 
       try {
+        const outputQueue = new OutputQueue();
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();
           run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
 
-          let outputQueue = Promise.resolve();
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
             const reg = Contract.registerServerToStream(
@@ -87,20 +88,34 @@ export class TestRunner {
                   }
                 },
 
-                logged({ line, id }) {
-                  const test = id && getTestByPath(id);
-                  const location = line.sh.file
-                    ? mapLocation(line.sh.file, line.sh.lineNumber, line.sh.column)
-                    : undefined;
-                  outputQueue = outputQueue.then(async () =>
-                    run.appendOutput(line.chunk, await location, test)
-                  );
+                output(line) {
+                  outputQueue.enqueue(() => run.appendOutput(`${line}\r\n`));
                 },
 
-                finished({ id, status, duration, actual, expected, error, stack }) {
+                finished({
+                  id,
+                  status,
+                  duration,
+                  actual,
+                  expected,
+                  error,
+                  stack,
+                  logs,
+                  logPrefix,
+                }) {
                   const test = getTestByPath(id);
                   if (!test) {
                     return;
+                  }
+
+                  for (const l of logs) {
+                    const location = l.sf.file
+                      ? mapLocation(l.sf.file, l.sf.lineNumber, l.sf.column)
+                      : undefined;
+                    outputQueue.enqueue(location, (location) => {
+                      run.appendOutput(logPrefix);
+                      run.appendOutput(l.chunk.replace(/\r?\n/g, "\r\n"), location, test);
+                    });
                   }
 
                   if (status === Result.Failed) {
@@ -113,14 +128,14 @@ export class TestRunner {
                     const location = lastFrame?.file
                       ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
                       : undefined;
-                    outputQueue = outputQueue.then(async () => {
-                      testMessage.location = await location;
+                    outputQueue.enqueue(location, (location) => {
+                      testMessage.location = location;
                       run.failed(test, testMessage);
                     });
                   } else if (status === Result.Skipped) {
-                    run.skipped(test);
+                    outputQueue.enqueue(() => run.skipped(test));
                   } else if (status === Result.Ok) {
-                    run.passed(test, duration);
+                    outputQueue.enqueue(() => run.passed(test, duration));
                   }
                 },
               }
@@ -131,7 +146,7 @@ export class TestRunner {
               .then(({ status, message }) => {
                 switch (status) {
                   case CompleteStatus.Done:
-                    return resolve(outputQueue);
+                    return resolve(outputQueue.drain());
                   case CompleteStatus.NodeVersionOutdated:
                     return reject(
                       new Error(
@@ -217,6 +232,27 @@ export class TestRunner {
   private async solveArguments(ctrl: vscode.TestController, request: vscode.TestRunRequest) {
     const exclude = new Set(request.exclude);
     const includeFiles = new Map<string, ITestRunFile>();
+
+    const addTestsToFileRecord = (record: ITestRunFile, queue: vscode.TestItem[]) => {
+      if (!record.include) {
+        return; // already running whole file
+      }
+
+      // node's runner doesn't automatically include subtests of an included
+      // test. Do so here, avoiding exclusions.
+      const include = new Set(record.include);
+      while (queue.length) {
+        const item = queue.pop()!;
+        include.add(item.label);
+        for (const [, child] of item.children) {
+          if (!request.exclude?.includes(child)) {
+            queue.push(child);
+          }
+        }
+      }
+      record.include = [...include];
+    };
+
     const addInclude = (test: vscode.TestItem) => {
       if (exclude.has(test)) {
         return;
@@ -232,26 +268,39 @@ export class TestRunner {
 
         case ItemType.File: {
           const key = test.uri!.toString();
-          if (!includeFiles.has(key)) {
-            includeFiles.set(key, { uri: test.uri!.toString(), path: metadata.compiledIn.fsPath });
+          if (includeFiles.has(key)) {
+            break;
           }
-          break;
+
+          const rec: ITestRunFile = { uri: test.uri!.toString(), path: metadata.compiledIn.fsPath };
+          includeFiles.set(key, rec);
+          // if there's any exclude in this file, we need to expand its tests so we can omit it.
+          if (request.exclude?.some((e) => e.uri?.toString() === test.uri!.toString())) {
+            rec.include = [];
+            addTestsToFileRecord(
+              rec,
+              [...test.children].map(([, t]) => t)
+            );
+          }
         }
 
         case ItemType.Test: {
           const key = test.uri!.toString();
           let record = includeFiles.get(key);
           if (!record) {
+            let include: string[] = [];
             for (let f = test.parent; f; f = f.parent) {
               const metadata = testMetadata.get(f);
               if (metadata?.type === ItemType.File) {
                 record = {
                   path: metadata.compiledIn.fsPath,
                   uri: test.uri!.toString(),
-                  include: [],
+                  include,
                 };
                 break;
               }
+
+              include.push(f.label);
             }
 
             if (!record) {
@@ -260,12 +309,8 @@ export class TestRunner {
 
             includeFiles.set(key, record);
           }
-          if (!record.include) {
-            // already running the whole file
-            return;
-          }
 
-          record.include.push(getFullNameForTest(test));
+          addTestsToFileRecord(record, [test]);
           break;
         }
       }
@@ -282,34 +327,7 @@ export class TestRunner {
       }
     }
 
-    if (request.exclude) {
-      // we only need to check direct test exclusions, since we filter out
-      // files/directories in `addInclude` alreadu
-      for (const exclude of request.exclude) {
-        if (testMetadata.get(exclude)?.type === ItemType.Test) {
-          const rec = includeFiles.get(exclude.uri!.toString());
-          if (!rec) {
-            continue;
-          }
-
-          rec.exclude ??= [];
-          rec.exclude.push(getFullNameForTest(exclude));
-        }
-      }
-    }
-
-    return [...includeFiles.values()];
+    // sort run order to avoid jumping around in the test explorer
+    return [...includeFiles.values()].sort((a, b) => a.path.localeCompare(b.path));
   }
 }
-
-const getFullNameForTest = (test: vscode.TestItem) => {
-  let testPath: string[] = [];
-  for (
-    let p: vscode.TestItem | undefined = test;
-    p && testMetadata.get(p)?.type === ItemType.Test;
-    p = p.parent
-  ) {
-    testPath.unshift(p.label);
-  }
-  return testPath.join(" ");
-};

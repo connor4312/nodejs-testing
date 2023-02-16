@@ -77,7 +77,10 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(syncWorkspaceFolders),
     vscode.workspace.onDidChangeTextDocument((e) => syncTextDocument(e.document)),
-    vscode.commands.registerCommand("nodejs-testing.get-controllers-for-test", () => ctrls),
+    vscode.commands.registerCommand("nodejs-testing.get-controllers-for-test", () => {
+      refreshFolders();
+      return ctrls;
+    }),
     includePattern.onChange(refreshFolders),
     excludePatterns.onChange(refreshFolders),
     new vscode.Disposable(() => ctrls.forEach((c) => c.dispose()))

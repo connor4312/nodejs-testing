@@ -1,7 +1,7 @@
 const esbuild = require("esbuild");
 
 const watch = process.argv.includes("--watch");
-const minify = !watch || process.argv.includes("--minify");
+const minify = watch ? process.argv.includes("--minify") : !process.argv.includes("--no-minify");
 
 const ctx = esbuild.context({
   entryPoints: [
@@ -14,7 +14,7 @@ const ctx = esbuild.context({
   tsconfig: "./tsconfig.json",
   bundle: true,
   external: ["vscode", "esbuild", "mocha"],
-  sourcemap: watch,
+  sourcemap: !minify,
   minify,
   platform: "node",
   outdir: "out",
@@ -23,6 +23,6 @@ const ctx = esbuild.context({
 ctx
   .then((ctx) => (watch ? ctx.watch() : ctx.rebuild()))
   .then(
-    () => process.exit(0),
+    () => !watch && process.exit(0),
     () => process.exit(1)
   );

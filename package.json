@@ -1,19 +1,25 @@
 {
   "name": "nodejs-testing",
-  "displayName": "Testing for node:test",
+  "displayName": "node:test runner",
   "description": "Test integration for node:test native tests",
   "publisher": "connor4312",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
   },
+  "keywords": [
+    "node",
+    "node.js",
+    "nodejs"
+  ],
   "categories": [
-    "Other"
+    "Testing"
   ],
   "activationEvents": [
     "workspaceContains:**/*.{js,cjs,mjs}",
     "onCommand:nodejs-testing.get-controllers-for-test"
   ],
+  "icon": "icon.png",
   "contributes": {
     "configuration": [
       {
@@ -54,15 +60,24 @@
       }
     ]
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/connor4312/nodejs-testing.git"
+  },
+  "bugs": {
+    "url": "https://github.com/connor4312/nodejs-testing/issues"
+  },
+  "homepage": "https://github.com/connor4312/nodejs-testing#readme",
   "main": "./out/extension.js",
   "scripts": {
+    "package": "vsce package --no-dependencies",
     "vscode:prepublish": "node .esbuild.js --minify",
     "compile": "node .esbuild.js --minify",
     "watch": "node .esbuild.js --watch",
     "compile:testcases": "node testCases/.esbuild.js",
     "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "tsc --noEmit && vitest run",
-    "test:integration": "node out/test/run"
+    "test:unit": "tsc --noEmit && vitest run --dir src",
+    "test:integration": "node .esbuild.js --no-minify && node out/test/run"
   },
   "devDependencies": {
     "@types/estraverse": "^5.1.2",
@@ -75,7 +90,6 @@
     "@types/vscode": "^1.74.0",
     "@vscode/test-electron": "^2.2.3",
     "acorn": "^8.8.1",
-    "chai": "^4.3.7",
     "chalk": "^5.2.0",
     "esbuild": "^0.17.5",
     "glob": "^8.1.0",

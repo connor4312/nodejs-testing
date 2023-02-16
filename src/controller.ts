@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { promises as fs } from "fs";
+import { promises as fs, statSync } from "fs";
 import * as path from "path";
 import picomatch from "picomatch";
 import * as vscode from "vscode";
@@ -25,8 +25,11 @@ export class Controller {
   private readonly disposable = new DisposableStore();
   private readonly watcher = this.disposable.add(new MutableDisposable());
   private readonly didChangeEmitter = new vscode.EventEmitter<void>();
-  /** Include pattern for workspace foles. */
-  private readonly pattern: vscode.RelativePattern;
+  /**
+   * Include patterns for workspace folders. `findFiles` doesn't do proper brace
+   * expansion yet, so this is an array
+   */
+  private readonly findPatterns: vscode.RelativePattern[];
   /** Pattern to check included files */
   private readonly includeTest: picomatch.Matcher;
   /** Promise that resolves when workspace files have been scanned */
@@ -57,19 +60,31 @@ export class Controller {
     include: string[],
     exclude: string[]
   ) {
-    include = include.map((p) => path.posix.normalize(forceForwardSlashes(p)));
-    exclude = exclude.map((p) => path.posix.normalize(forceForwardSlashes(p)));
+    this.disposable.add(ctrl);
 
-    const watcherGlob =
-      include.length <= 1
-        ? path.posix.join(include[0] || "./", `**/*${jsExtensions}`)
-        : `{${include.join(",")}}/**/*${jsExtensions}`;
-    this.pattern = new vscode.RelativePattern(wf, watcherGlob);
+    this.findPatterns = include.map((p) => {
+      const pattern = path.posix.join(forceForwardSlashes(p), `**/*${jsExtensions}`);
+      return new vscode.RelativePattern(wf, pattern);
+    });
 
     this.includeTest = picomatch(
-      include.flatMap((i) => testPatterns.map((tp) => path.posix.join(i, tp))),
+      include.flatMap((i) =>
+        testPatterns.map((tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`)
+      ),
       {
-        ignore: exclude,
+        ignore: exclude.map((e) => {
+          e = forceForwardSlashes(path.resolve(wf.uri.fsPath, e));
+
+          // if the exclude is e.g. a directory, make it a glob pattern.
+          try {
+            if (!e.includes("*") && statSync(e).isDirectory()) {
+              return `${e}/**/*.*`;
+            }
+          } catch {
+            // ignored
+          }
+          return e;
+        }),
         cwd: wf.uri.fsPath,
         posixSlashes: true,
       }
@@ -111,7 +126,7 @@ export class Controller {
 
     // cheap test for relevancy:
     if (!contents.includes("node:test")) {
-      this.deleteFileTests(uri);
+      this.deleteFileTests(uri.toString());
       return;
     }
 
@@ -125,7 +140,7 @@ export class Controller {
 
     const tree = parseSource(contents);
     if (!tree.length) {
-      this.deleteFileTests(uri);
+      this.deleteFileTests(uri.toString());
       return;
     }
 
@@ -200,13 +215,13 @@ export class Controller {
     this.didChangeEmitter.fire();
   }
 
-  private deleteFileTests(uri: vscode.Uri) {
-    const previous = this.testsInFiles.get(uri.toString());
+  private deleteFileTests(uriStr: string) {
+    const previous = this.testsInFiles.get(uriStr);
     if (!previous) {
       return;
     }
 
-    this.testsInFiles.delete(uri.toString());
+    this.testsInFiles.delete(uriStr);
     for (const [id, item] of previous.items) {
       diagnosticCollection.delete(item.uri!);
       const itemsIt = this.getContainingItemsForFile(item.uri!);
@@ -239,11 +254,21 @@ export class Controller {
   }
 
   public async startWatchingWorkspace() {
-    const watcher = (this.watcher.value = vscode.workspace.createFileSystemWatcher(this.pattern));
+    // we need to watch for *every* change due to https://github.com/microsoft/vscode/issues/60813
+    const watcher = (this.watcher.value = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(this.wf, `**/*`)
+    ));
 
     watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
     watcher.onDidChange((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
-    watcher.onDidDelete((uri) => this.includeTest(uri.fsPath) && this.deleteFileTests(uri));
+    watcher.onDidDelete((uri) => {
+      const prefix = uri.toString();
+      for (const key of this.testsInFiles.keys()) {
+        if (key === prefix || (key[prefix.length] === "/" && key.startsWith(prefix))) {
+          this.deleteFileTests(key);
+        }
+      }
+    });
 
     const promise = (this.initialFileScan = this.scanFiles());
     await promise;
@@ -256,23 +281,26 @@ export class Controller {
     }
 
     const toRemove = new Set(this.testsInFiles.keys());
-    const todo = [];
-    for (const file of await vscode.workspace.findFiles(this.pattern)) {
-      if (this.includeTest(file.fsPath)) {
-        todo.push(this._syncFile(file));
-        toRemove.delete(file.toString());
+    const todo = this.findPatterns.map(async (pattern) => {
+      const todoInner = [];
+      for (const file of await vscode.workspace.findFiles(pattern)) {
+        if (this.includeTest(file.fsPath)) {
+          todoInner.push(this._syncFile(file));
+          toRemove.delete(file.toString());
+        }
       }
-    }
+      await Promise.all(todoInner);
+    });
+
+    await Promise.all(todo);
 
     for (const uriStr of toRemove) {
-      this.deleteFileTests(vscode.Uri.parse(uriStr));
+      this.deleteFileTests(uriStr);
     }
 
     if (this.testsInFiles.size === 0) {
       this.watcher.dispose(); // stop watching if there are no tests discovered
     }
-
-    await Promise.all(todo);
   }
 
   /** Gets the test collection for a file of the given URI, descending from the root. */

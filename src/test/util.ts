@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
 import * as sinon from "sinon";
+import { setTimeout } from "timers/promises";
 import * as vscode from "vscode";
 import type { Controller } from "../controller";
 
@@ -37,7 +38,7 @@ const buildTreeExpectation = (entry: TestTreeExpectation, c: vscode.TestItemColl
   entry[1]?.sort(([a], [b]) => a.localeCompare(b));
 };
 
-export const onceChanced = (controller: Controller) =>
+export const onceChanged = (controller: Controller) =>
   new Promise<void>((resolve) => {
     const l = controller.onDidChange(() => {
       l.dispose();
@@ -52,7 +53,7 @@ export const expectTestTree = async ({ ctrl }: Controller, tree: TestTreeExpecta
 };
 
 export const saveAndRestoreWorkspace = async (cwd: string, fn: () => unknown) => {
-  const original = path.join(cwd);
+  const original = path.join(cwd, "workspace");
   const backup = path.join(tmpdir(), `nodejs-test-backup-${randomBytes(8).toString("hex")}`);
 
   await fs.cp(original, backup, { recursive: true });
@@ -60,8 +61,18 @@ export const saveAndRestoreWorkspace = async (cwd: string, fn: () => unknown) =>
   try {
     await fn();
   } finally {
-    await fs.rm(original, { recursive: true, force: true });
+    // vscode behaves badly when we delete the workspace folder; delete contents instead.
+    const files = await fs.readdir(original);
+    await Promise.all(
+      files.map((f) => fs.rm(path.join(original, f), { recursive: true, force: true }))
+    );
+
     await fs.cp(backup, original, { recursive: true });
+    await fs.rm(backup, { recursive: true, force: true });
+
+    // it seems like all these files changes can require a moment for vscode's file
+    // watcher to update before we can run the next test. 500 seems to do it 🤷‍♂️
+    await setTimeout(500);
   }
 };
 
@@ -81,8 +92,8 @@ export class FakeTestRun implements vscode.TestRun {
       }
       (actual[key] ??= []).push(state);
     }
-    console.log(JSON.stringify(actual));
-    assert.deepStrictEqual(actual, expected);
+
+    assert.deepStrictEqual(actual, expected, JSON.stringify(actual));
   }
 
   //#region fake implementation

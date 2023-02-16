@@ -1,9 +1,11 @@
 import { promises as fs } from "fs";
 import * as path from "path";
+import * as vscode from "vscode";
 import {
+  captureTestRun,
   expectTestTree,
   getController,
-  onceChanced,
+  onceChanged,
   saveAndRestoreWorkspace,
 } from "../../src/test/util";
 
@@ -19,7 +21,7 @@ it("discovers new file", () =>
   saveAndRestoreWorkspace(__dirname, async () => {
     const c = await getController();
 
-    const onChange = onceChanced(c);
+    const onChange = onceChanged(c);
 
     await fs.cp(
       path.join(__dirname, "fixtures/another.test.js"),
@@ -46,7 +48,7 @@ it("handles file deletion", () =>
   saveAndRestoreWorkspace(__dirname, async () => {
     const c = await getController();
 
-    const onChange = onceChanced(c);
+    const onChange = onceChanged(c);
 
     await fs.rm(path.join(__dirname, "workspace/out/example.test.js"));
     await fs.rm(path.join(__dirname, "workspace/out/example.test.js.map"));
@@ -54,3 +56,13 @@ it("handles file deletion", () =>
 
     await expectTestTree(c, []);
   }));
+
+it("runs tests", async () => {
+  const c = await getController();
+  const run = await captureTestRun(c, new vscode.TestRunRequest());
+
+  run.expectStates({
+    "src/example.test.ts/math/addition": ["started", "passed"],
+    "src/example.test.ts/math/subtraction": ["started", "failed"],
+  });
+});
