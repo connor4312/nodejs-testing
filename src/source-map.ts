@@ -14,7 +14,7 @@ export interface IMappingAccessor {
   originalPositionFor(line: number, col: number): vscode.Location;
 }
 
-const identityMapping = (file: vscode.Uri): IMappingAccessor => ({
+export const identityMapping = (file: vscode.Uri): IMappingAccessor => ({
   originalPositionFor(line, col) {
     // VS Code positions are base 0, adjust the line
     return new vscode.Location(file, new vscode.Position(line - 1, col));

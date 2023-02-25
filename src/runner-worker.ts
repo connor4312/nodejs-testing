@@ -108,12 +108,13 @@ async function doWork(prefix: string, queue: ITestRunFile[]) {
     }
 
     await new Promise<void>((resolve) => {
+      server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
+
       const args = ["--require", join(__dirname, "runner-loader.js")];
       for (const include of next.include || []) {
         args.push("--test-name-pattern", `^${escapeRegex(include)}$`);
       }
       args.push(next.path);
-      server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
 
       const stderr: Buffer[] = [];
       const cp = spawn(process.argv0, args, {

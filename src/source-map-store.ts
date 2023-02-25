@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import * as vscode from "vscode";
-import { IMappingAccessor, parseSourceMap } from "./source-map";
+import { identityMapping, IMappingAccessor, parseSourceMap } from "./source-map";
 
 export interface ISourceMapMaintainer {
   value: Promise<IMappingAccessor> | undefined;
@@ -35,7 +35,10 @@ export class SourceMapStore {
       },
       async refresh(contents) {
         const contentsProm = fs.readFile(uri.fsPath, "utf8") || Promise.resolve(contents);
-        return (rec.accessor = contentsProm.then((c) => parseSourceMap(uri, c)));
+        return (rec.accessor = contentsProm.then(
+          (c) => parseSourceMap(uri, c),
+          () => identityMapping(uri)
+        ));
       },
       dispose() {
         if (--rec.rc === 0) {
