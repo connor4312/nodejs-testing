@@ -96,7 +96,7 @@ it("runs tests", async () => {
     "test/inAFolder.js/addition": ["started", "passed"],
     "test-WithADash.js/addition": ["started", "passed"],
     "test.js/addition": ["started", "passed"],
-    "withADashTheOtherWay-test.js/addition": ["started", "passed"],
+    "withADashTheOtherWay-test.js/addition": ["started", "failed"],
     "hello.test.js/math/addition": ["started", "passed"],
     "hello.test.js/math/subtraction": ["started", "passed"],
     "otherFolder/some.test.js/addition": ["started", "passed"],
@@ -194,7 +194,7 @@ it("handles file and directory excludes", async () => {
     "otherFolder/some.test.js/addition": ["started", "passed"],
     "test-WithADash.js/addition": ["started", "passed"],
     "test.js/addition": ["started", "passed"],
-    "withADashTheOtherWay-test.js/addition": ["started", "passed"],
+    "withADashTheOtherWay-test.js/addition": ["started", "failed"],
     "withADot.test.js/addition": ["started", "passed"],
   });
 });

@@ -124,7 +124,7 @@ export class TestRunner {
                       actual !== undefined && expected !== undefined
                         ? vscode.TestMessage.diff(asText, expected, actual)
                         : new vscode.TestMessage(asText);
-                    const lastFrame = stack?.[0];
+                    const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
                     const location = lastFrame?.file
                       ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
                       : undefined;
