@@ -1,4 +1,3 @@
-import { resolve } from "path";
 import { parse } from "stacktrace-parser";
 
 const stackObj = { stack: "" };
@@ -31,5 +30,3 @@ for (const channel of ["stderr", "stdout"] as const) {
     },
   });
 }
-
-require(resolve(process.cwd(), process.argv[2]));

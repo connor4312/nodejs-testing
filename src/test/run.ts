@@ -8,7 +8,8 @@ async function main() {
   try {
     const extensionDevelopmentPath = path.resolve(__dirname, "../../");
     const testCasesDir = path.resolve(extensionDevelopmentPath, "testCases");
-    const testCases = readdirSync(testCasesDir);
+    const argvTestCases = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+    const testCases = argvTestCases.length ? argvTestCases : readdirSync(testCasesDir);
 
     for (const testCase of testCases) {
       const testCaseDir = path.resolve(testCasesDir, testCase);

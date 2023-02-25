@@ -108,9 +108,10 @@ async function doWork(prefix: string, queue: ITestRunFile[]) {
     }
 
     await new Promise<void>((resolve) => {
-      const args =
-        next.include?.flatMap((i) => ["--test-name-pattern", `^${escapeRegex(i)}$`]) || [];
-      args.push(join(__dirname, "runner-loader.js"));
+      const args = ["--require", join(__dirname, "runner-loader.js")];
+      for (const include of next.include || []) {
+        args.push("--test-name-pattern", `^${escapeRegex(include)}$`);
+      }
       args.push(next.path);
       server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
 
