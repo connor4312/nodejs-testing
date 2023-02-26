@@ -108,7 +108,7 @@ export const parseSource = (text: string) => {
         }
       } else if (node.type === C.CallExpression) {
         const nameArg = node.arguments[0];
-        if (nameArg.type !== C.Literal || typeof nameArg.value !== "string") {
+        if (nameArg?.type !== C.Literal || typeof nameArg.value !== "string") {
           return;
         }
         for (const test of idTests) {

@@ -71,7 +71,7 @@ describe("extract", () => {
     expect(parseSource(src)).toMatchSnapshot();
   });
 
-  it('extracts ts import mangled', () => {
+  it("extracts ts import mangled", () => {
     const src = `"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert_1 = require("assert");
@@ -90,5 +90,15 @@ const node_test_1 = require("node:test");
 //# sourceMappingURL=example.js.map`;
 
     expect(parseSource(src)).toMatchSnapshot();
-  })
+  });
+
+  it("does not break on empty call expression (#3)", () => {
+    const src = `const { describe, it } = require("node:test");
+
+    (function() {})();
+
+    ${testCases()}`;
+
+    expect(parseSource(src)).toMatchSnapshot();
+  });
 });

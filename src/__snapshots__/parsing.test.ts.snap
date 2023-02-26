@@ -1,5 +1,71 @@
 // Vitest Snapshot v1
 
+exports[`extract > does not break on empty call expression (#3) 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 8,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 6,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 11,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 9,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 15,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 13,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 16,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 5,
+      },
+    },
+    "name": "math",
+  },
+]
+`;
+
 exports[`extract > extracts aliased imports 1`] = `
 [
   {
