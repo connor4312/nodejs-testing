@@ -8,9 +8,9 @@ import { join } from "path";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { last } from "./iterable";
-import { getContainingItemsForFile, ItemType, testMetadata } from "./metadata";
+import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
-import { CompleteStatus, contract, ITestRunFile, Result } from "./runner-protocol";
+import { CompleteStatus, ITestRunFile, Result, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
 
 let socketCounter = 0;
@@ -62,7 +62,9 @@ export class TestRunner {
       };
 
       const mapLocation = async (path: string, line: number | null, col: number | null) => {
-        const smMaintainer = this.smStore.maintain(vscode.Uri.file(path));
+        // stacktraces can have file URIs on some platforms (#7)
+        const fileUri = path.startsWith("file:") ? vscode.Uri.parse(path) : vscode.Uri.file(path);
+        const smMaintainer = this.smStore.maintain(fileUri);
         run.token.onCancellationRequested(() => smMaintainer.dispose());
         const sourceMap = await (smMaintainer.value || smMaintainer.refresh());
         return sourceMap.originalPositionFor(line || 1, col || 0);
