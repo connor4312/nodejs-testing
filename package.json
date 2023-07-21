@@ -30,6 +30,14 @@
             "default": "node",
             "description": "Path to the Node.js binary used to run tests"
           },
+          "nodejs-testing.nodejsParameters": {
+            "type": "array",
+            "markdownDescription": "Additional Parameters that will be passed onto the node process. Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`.",
+            "default": [],
+            "items": {
+              "type": "string"
+            }
+          },
           "nodejs-testing.include": {
             "type": "array",
             "markdownDescription": "Directories which to find tests, relative to your workspace folder. Files that match the [Node.js test patterns](https://nodejs.org/api/test.html#test-runner-execution-model) will be included.\n\nNote: if you compile your code, this should point to the location of your compiled files, not your source files.",
@@ -102,6 +110,7 @@
     "printWidth": 100
   },
   "dependencies": {
+    "@c4312/vscode-variables": "^1.0.0",
     "@hediet/json-rpc": "^0.3.0",
     "@hediet/json-rpc-streams": "https://gitpkg.now.sh/hediet/typed-json-rpc/json-rpc-streams?d4d660cf19acd424ef4f782822efc34c01f97c1a",
     "@jridgewell/trace-mapping": "^0.3.17",
