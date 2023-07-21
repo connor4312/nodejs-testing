@@ -12,7 +12,8 @@ export async function activate(context: vscode.ExtensionContext) {
     smStore,
     new ConfigValue("concurrency", 0),
     new ConfigValue("nodejsPath", "node"),
-    context.extensionUri.fsPath
+    context.extensionUri.fsPath,
+    new ConfigValue("nodejsParameters", [])
   );
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();

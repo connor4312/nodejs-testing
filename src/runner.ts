@@ -1,3 +1,4 @@
+import { replaceVariables } from "@c4312/vscode-variables";
 import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
 import { spawn } from "child_process";
@@ -29,7 +30,8 @@ export class TestRunner {
     private readonly smStore: SourceMapStore,
     private readonly concurrency: ConfigValue<number>,
     private readonly nodejsPath: ConfigValue<string>,
-    extensionDir: string
+    extensionDir: string,
+    private readonly nodejsParameters: ConfigValue<string[]>
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
   }
@@ -163,7 +165,10 @@ export class TestRunner {
           server.once("error", reject);
           server.listen(socket);
 
-          this.spawnWorker(wf, debug, socket, run.token).then(
+          const resolvedNodejsParameters = this.nodejsParameters.value.map((p) =>
+            replaceVariables(p)
+          );
+          this.spawnWorker(wf, debug, socket, run.token, resolvedNodejsParameters).then(
             () => reject(new Error("Worker executed without signalling its completion")),
             reject
           );
@@ -182,12 +187,17 @@ export class TestRunner {
     wf: vscode.WorkspaceFolder,
     debug: boolean,
     socketPath: string,
-    ct: vscode.CancellationToken
+    ct: vscode.CancellationToken,
+    resolvedNodejsParameters: string[]
   ) {
     if (!debug) {
       await new Promise<void>((resolve, reject) => {
         const stderr: Buffer[] = [];
-        const cp = spawn(this.nodejsPath.value, [this.workerPath, socketPath]);
+        const cp = spawn(this.nodejsPath.value, [
+          ...resolvedNodejsParameters,
+          this.workerPath,
+          socketPath,
+        ]);
         cp.stderr.on("data", (d) => stderr.push(d));
         cp.on("error", reject);
         cp.on("exit", (code) => {
