@@ -11,7 +11,7 @@ import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
-const jsExtensions = ".{mjs,cjs,js}";
+const jsExtensions = ".{mjs,cjs,js,ts,tsx,mts}";
 
 /** @see https://nodejs.org/api/test.html#test-runner-execution-model */
 const testPatterns = [

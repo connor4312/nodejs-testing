@@ -7,7 +7,7 @@ import { dirname, join } from "path";
 import { parse as parseStackTrace } from "stacktrace-parser";
 import { Parser, Result as TapResult } from "tap-parser";
 import { escapeRegex } from "./regex";
-import { CompleteStatus, contract, ILog, ITestRunFile, Result } from "./runner-protocol";
+import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
 
 const colors = [
   ansiColors.redBright,
@@ -92,13 +92,13 @@ async function doWork(prefix: string, queue: ITestRunFile[]) {
           actual: a.diag.actual !== undefined ? JSON.stringify(a.diag.actual, null, 2) : undefined,
           stack: a.diag.stack
             ? // node's runner does some primitive stack cleaning that we need to
-              // undo so stack-trace-parser can understand it
-              parseStackTrace(
-                a.diag.stack
-                  .split("\n")
-                  .map((l: string) => `  at ${l}`)
-                  .join("\n")
-              )
+            // undo so stack-trace-parser can understand it
+            parseStackTrace(
+              a.diag.stack
+                .split("\n")
+                .map((l: string) => `  at ${l}`)
+                .join("\n")
+            )
             : undefined,
           status: a.skip || a.todo ? Result.Skipped : a.ok ? Result.Ok : Result.Failed,
         });
@@ -114,9 +114,17 @@ async function doWork(prefix: string, queue: ITestRunFile[]) {
       for (const include of next.include || []) {
         args.push("--test-name-pattern", `^${escapeRegex(include)}$`);
       }
+
+      if (next.path.endsWith("ts") || next.path.endsWith("tsx")) {
+        args.push("--loader");
+        args.push("tsx");
+      }
       args.push(next.path);
 
       const stderr: Buffer[] = [];
+
+      server.output(`spawn command=${process.argv0} args=${args}`);
+
       const cp = spawn(process.argv0, args, {
         cwd: dirname(next.path),
         stdio: "pipe",
