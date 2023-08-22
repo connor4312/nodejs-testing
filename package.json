@@ -32,7 +32,7 @@
           },
           "nodejs-testing.nodejsParameters": {
             "type": "array",
-            "markdownDescription": "Additional Parameters that will be passed onto the node process. Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`.",
+            "markdownDescription": "Additional Parameters that will be passed onto the worker node process. Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`. Attention, this process does not initiate the unit tests. The parameters for the process that starts the unit tests are defined using the `extensions` data structure.",
             "default": [],
             "items": {
               "type": "string"
@@ -66,7 +66,7 @@
           },
           "nodejs-testing.extensions": {
             "type": "array",
-            "markdownDescription": "Node Parameter per extension.",
+            "markdownDescription": "With this data structure, you can specify, in which file types unit tests should be searched for. For the respective file types, additional parameters can be defined, that are passed to the process, that initiates the unit tests.",
             "default": [
               {
                 "extensions": [
@@ -79,24 +79,29 @@
             ],
             "items": {
               "type": "object",
+              "default": {
+                "extensions": [
+                  "mjs",
+                  "cjs",
+                  "js"
+                ],
+                "parameters": []
+              },
               "required": [
                 "extensions",
                 "parameters"
               ],
-              "default": null,
               "properties": {
                 "extensions": {
                   "type": "array",
-                  "markdownDescription": "Extensions. For example `ts`",
-                  "default": [],
+                  "markdownDescription": "Extensions. For example [\"ts\"]",
                   "items": {
                     "type": "string"
                   }
                 },
                 "parameters": {
                   "type": "array",
-                  "markdownDescription": "Additional Parameters that will be passed onto the node process if the extension ist one of 'extensionParameers' Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`.",
-                  "default": [],
+                  "markdownDescription": "Additional parameters can be defined here, which are passed to the process, that executes the unit tests. For example [\"--loader\", \"tsx\"]",
                   "items": {
                     "type": "string"
                   }
