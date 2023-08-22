@@ -21,9 +21,39 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
 - `nodejs-testing.exclude` is the list of glob patterns that should be excluded from the search. Defaults to `['**/node_modules/**']`.
 - `nodejs-testing.concurrency` is how many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.
 - `nodejs-testing.nodejsPath` is the path to the Node.js binary to use for running tests. If unset, will try to find Node on your PATH.
-- `nodejs-testing.nodejsParameters` Additional Parameters that will be passed onto the node process. Each parameter is a separate item in the array.
+- `nodejs-testing.nodejsParameters` Additional Parameters that will be passed onto the worker node process. Each parameter is a separate item in the array.
 
   To get for example `node --import /abs/path/to/file.js` you need 2 entries
 
   1.  `--import`
   2.  `${workspaceFolder}/to/file.js`
+Attention, this process does not initiate the unit tests. The parameters for the process that starts the unit tests are defined using the following data structure.
+- `nodejs-testing.extensions` With this data structure, you can specify, in which file types unit tests should be searched for. For the respective file types, additional parameters can be defined, that are passed to the worker process, that initiates the unit tests.
+
+  **Example 1** (default):
+
+  `[{"extensions": ["mjs", "cjs", "js"], 
+      "parameters": [] }]`
+
+  **Example 2**: for typescript unittests without explicit compilation step:
+
+  ````
+  {
+    "nodejs-testing.extensions": [
+        {
+            "extensions": [
+                "mjs",
+                "cjs",
+                "js"
+            ],
+            "parameters": []
+        },
+        {
+            "extensions": [
+                "mts",
+                "cts",
+                "ts"
+            ],
+            "parameters": ["--loader","tsx"]
+        }]}
+````

@@ -63,6 +63,46 @@
             "format": "integer",
             "description": "How many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.",
             "default": 0
+          },
+          "nodejs-testing.extensions": {
+            "type": "array",
+            "markdownDescription": "Node Parameter per extension.",
+            "default": [
+              {
+                "extensions": [
+                  "mjs",
+                  "cjs",
+                  "js"
+                ],
+                "parameters": []
+              }
+            ],
+            "items": {
+              "type": "object",
+              "required": [
+                "extensions",
+                "parameters"
+              ],
+              "default": null,
+              "properties": {
+                "extensions": {
+                  "type": "array",
+                  "markdownDescription": "Extensions. For example `ts`",
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parameters": {
+                  "type": "array",
+                  "markdownDescription": "Additional Parameters that will be passed onto the node process if the extension ist one of 'extensionParameers' Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`.",
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
           }
         }
       }

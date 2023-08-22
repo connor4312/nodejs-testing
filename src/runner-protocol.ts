@@ -58,6 +58,14 @@ export const contract = makeContract({
             include: s.optionalProp(s.sArrayOf(s.sString())),
           })
         ),
+        extensions: s.sArrayOf(
+          s.sObject({
+            // VS Code URI of the file to associate the test with. For sourcemaps,
+            // may not be the same as the location pointed to by the `path`
+            extensions: s.sArrayOf(s.sString()),
+            // fs path of the file to run
+            parameters: s.sArrayOf(s.sString())}))
+          
       }),
       result: s.sObject({
         status: s.sNumber(),

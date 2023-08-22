@@ -8,6 +8,7 @@ import { parse as parseStackTrace } from "stacktrace-parser";
 import { Parser, Result as TapResult } from "tap-parser";
 import { escapeRegex } from "./regex";
 import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
+import * as path from "path";
 
 const colors = [
   ansiColors.redBright,
@@ -26,7 +27,7 @@ const enum C {
 
 // todo: this can be simplified with https://github.com/nodejs/node/issues/46045
 
-const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, files }) => {
+const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, files, extensions }) => {
   const majorVersion = /^v([0-9]+)/.exec(process.version);
   if (!majorVersion || Number(majorVersion[1]) < 19) {
     return { status: CompleteStatus.NodeVersionOutdated, message: process.version };
@@ -35,14 +36,14 @@ const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, 
   const todo: Promise<void>[] = [];
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
-    todo.push(doWork(prefix, files));
+    todo.push(doWork(prefix, files, extensions));
   }
   await Promise.all(todo);
 
   return { status: CompleteStatus.Done };
 };
 
-async function doWork(prefix: string, queue: ITestRunFile[]) {
+async function doWork(prefix: string, queue: ITestRunFile[], extensions:any[]) {
   while (queue.length) {
     const next = queue.pop()!;
 
@@ -109,16 +110,19 @@ async function doWork(prefix: string, queue: ITestRunFile[]) {
 
     await new Promise<void>((resolve) => {
       server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
+      let args = []
+      let ext = path.extname(next.path);
+      if(extensions) {
+        const parameters = extensions.find(x=> x.extensions.some( (y:string) => `.${y}`== ext))?.parameters;
+        if(parameters)
+          args.push(...parameters);
+      }
 
-      const args = ["--require", join(__dirname, "runner-loader.js")];
+      args.push(...["--require", join(__dirname, "runner-loader.js")]);
       for (const include of next.include || []) {
         args.push("--test-name-pattern", `^${escapeRegex(include)}$`);
       }
 
-      if (next.path.endsWith("ts") || next.path.endsWith("tsx")) {
-        args.push("--loader");
-        args.push("tsx");
-      }
       args.push(next.path);
 
       const stderr: Buffer[] = [];

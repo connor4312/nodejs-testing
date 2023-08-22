@@ -8,12 +8,18 @@ export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
   const includePattern = new ConfigValue("include", ["${workspaceFolder}"]);
   const excludePatterns = new ConfigValue("exclude", ["**/node_modules/**"]);
+
   const runner = new TestRunner(
     smStore,
     new ConfigValue("concurrency", 0),
     new ConfigValue("nodejsPath", "node"),
     context.extensionUri.fsPath,
-    new ConfigValue("nodejsParameters", [])
+    new ConfigValue("nodejsParameters", []),
+    new ConfigValue("extensions", [
+      {
+        "extensions": ["mjs", "cjs", "js"],
+        "parameters": []
+      }])
   );
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
@@ -93,4 +99,4 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() {}
+export function deactivate() { }

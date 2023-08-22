@@ -31,7 +31,8 @@ export class TestRunner {
     private readonly concurrency: ConfigValue<number>,
     private readonly nodejsPath: ConfigValue<string>,
     extensionDir: string,
-    private readonly nodejsParameters: ConfigValue<string[]>
+    private readonly nodejsParameters: ConfigValue<string[]>,
+    public readonly extensions: ConfigValue<any[]>
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
   }
@@ -80,6 +81,8 @@ export class TestRunner {
 
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
+            const extensions = this.extensions.value;
+            
             const reg = Contract.registerServerToStream(
               contract,
               new NodeJsMessageStream(stream, stream),
@@ -146,7 +149,7 @@ export class TestRunner {
             );
 
             reg.client
-              .start({ files, concurrency })
+              .start({ files, concurrency, extensions })
               .then(({ status, message }) => {
                 switch (status) {
                   case CompleteStatus.Done:

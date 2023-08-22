@@ -5,19 +5,36 @@ import picomatch from "picomatch";
 import * as vscode from "vscode";
 import { DisposableStore, MutableDisposable } from "./disposable";
 import { last } from "./iterable";
-import { getContainingItemsForFile, ICreateOpts, ItemType, testMetadata } from "./metadata";
+import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
-const jsExtensions = ".{mjs,cjs,js,ts,tsx,mts}";
+
+function jsExtensions(extensions: string[]) {
+  let jsExtensions = "";
+
+  if (extensions == null || extensions.length == 0) {
+    throw "No Extensions defined";
+  }
+  else if (extensions.length == 1) {
+    jsExtensions = `.${extensions[0]}`;
+  }
+  else {
+    jsExtensions = `.{${extensions.join(',')}}`;
+  }
+  console.log(`jsExtensions=${jsExtensions}`);
+  return jsExtensions;
+}
 
 /** @see https://nodejs.org/api/test.html#test-runner-execution-model */
-const testPatterns = [
-  `**/{test,test-*,*.test,*-test,*_test}${jsExtensions}`,
-  `**/test/**/*${jsExtensions}`,
-];
+function testPatterns(extensions: string[]) {
+  return [
+    `**/{test,test-*,*.test,*-test,*_test}${jsExtensions(extensions)}`,
+    `**/test/**/*${jsExtensions(extensions)}`,
+  ];
+}
 
 const forceForwardSlashes = (p: string) => p.replace(/\\/g, "/");
 
@@ -61,15 +78,16 @@ export class Controller {
     exclude: string[]
   ) {
     this.disposable.add(ctrl);
-
+    const extensions = runner.extensions.value.flatMap(x => x.extensions);
     this.findPatterns = include.map((p) => {
-      const pattern = path.posix.join(forceForwardSlashes(p), `**/*${jsExtensions}`);
+      const pattern = path.posix.join(forceForwardSlashes(p), `**/*${jsExtensions(extensions)}`);
       return new vscode.RelativePattern(wf, pattern);
     });
 
+
     this.includeTest = picomatch(
       include.flatMap((i) =>
-        testPatterns.map((tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`)
+        testPatterns(extensions).map((tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`)
       ),
       {
         ignore: exclude.map((e) => {
