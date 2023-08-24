@@ -10,9 +10,10 @@ export async function activate(context: vscode.ExtensionContext) {
   const excludePatterns = new ConfigValue("exclude", ["**/node_modules/**"]);
   const extensions = new ConfigValue("extensions", [
     {
-      "extensions": ["mjs", "cjs", "js"],
-      "parameters": []
-    }]);
+      extensions: ["mjs", "cjs", "js"],
+      parameters: [],
+    },
+  ]);
 
   const runner = new TestRunner(
     smStore,
@@ -20,7 +21,8 @@ export async function activate(context: vscode.ExtensionContext) {
     new ConfigValue("nodejsPath", "node"),
     context.extensionUri.fsPath,
     new ConfigValue("nodejsParameters", []),
-    extensions);
+    extensions,
+  );
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
@@ -40,15 +42,15 @@ export async function activate(context: vscode.ExtensionContext) {
           new Controller(
             vscode.tests.createTestController(
               `nodejs-tests-${folder.name || folder.index}`,
-              `node:test's in ${folder.name}`
+              `node:test's in ${folder.name}`,
             ),
             folder,
             smStore,
             runner,
             includePattern.value,
             excludePatterns.value,
-            extensions.value
-          )
+            extensions.value,
+          ),
         );
       }
     }
@@ -78,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
       setTimeout(() => {
         const ctrl = folder && ctrls.get(folder);
         ctrl?.syncFile(document.uri, () => document.getText());
-      }, 300)
+      }, 300),
     );
   };
 
@@ -92,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
     includePattern.onChange(refreshFolders),
     excludePatterns.onChange(refreshFolders),
     extensions.onChange(refreshFolders),
-    new vscode.Disposable(() => ctrls.forEach((c) => c.dispose()))
+    new vscode.Disposable(() => ctrls.forEach((c) => c.dispose())),
   );
 
   syncWorkspaceFolders();
@@ -101,4 +103,4 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() { }
+export function deactivate() {}

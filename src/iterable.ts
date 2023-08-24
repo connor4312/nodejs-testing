@@ -4,4 +4,4 @@ export const last = <T>(it: Iterable<T>): T | undefined => {
     last = item;
   }
   return last;
-}
+};

@@ -10,7 +10,7 @@ import type { Controller } from "../controller";
 
 export const getController = async () => {
   const c = await vscode.commands.executeCommand<Map<vscode.WorkspaceFolder, Controller>>(
-    "nodejs-testing.get-controllers-for-test"
+    "nodejs-testing.get-controllers-for-test",
   );
 
   if (!c.size) {
@@ -64,7 +64,7 @@ export const saveAndRestoreWorkspace = async (cwd: string, fn: () => unknown) =>
     // vscode behaves badly when we delete the workspace folder; delete contents instead.
     const files = await fs.readdir(original);
     await Promise.all(
-      files.map((f) => fs.rm(path.join(original, f), { recursive: true, force: true }))
+      files.map((f) => fs.rm(path.join(original, f), { recursive: true, force: true })),
     );
 
     await fs.cp(backup, original, { recursive: true });
@@ -113,7 +113,7 @@ export class FakeTestRun implements vscode.TestRun {
   failed(
     test: vscode.TestItem,
     message: vscode.TestMessage | readonly vscode.TestMessage[],
-    _duration?: number | undefined
+    _duration?: number | undefined,
   ): void {
     this.states.push({
       test,
@@ -124,7 +124,7 @@ export class FakeTestRun implements vscode.TestRun {
   errored(
     test: vscode.TestItem,
     message: vscode.TestMessage | readonly vscode.TestMessage[],
-    _duration?: number | undefined
+    _duration?: number | undefined,
   ): void {
     this.states.push({
       test,
@@ -138,7 +138,7 @@ export class FakeTestRun implements vscode.TestRun {
   appendOutput(
     output: string,
     location?: vscode.Location | undefined,
-    test?: vscode.TestItem | undefined
+    test?: vscode.TestItem | undefined,
   ): void {
     this.output.push({ output, location, test });
   }

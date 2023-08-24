@@ -17,7 +17,10 @@ export class ConfigValue<T> {
     return `${sectionName}.${this.sectionKey}`;
   }
 
-  constructor(private readonly sectionKey: string, defaultValue: T) {
+  constructor(
+    private readonly sectionKey: string,
+    defaultValue: T,
+  ) {
     this.changeListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration(this.key)) {
         this._value =

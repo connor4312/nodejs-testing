@@ -17,12 +17,10 @@ function jsExtensions(extensions: string[]) {
 
   if (extensions == null || extensions.length == 0) {
     throw "No Extensions defined";
-  }
-  else if (extensions.length == 1) {
+  } else if (extensions.length == 1) {
     jsExtensions = `.${extensions[0]}`;
-  }
-  else {
-    jsExtensions = `.{${extensions.join(',')}}`;
+  } else {
+    jsExtensions = `.{${extensions.join(",")}}`;
   }
   return jsExtensions;
 }
@@ -75,19 +73,20 @@ export class Controller {
     runner: TestRunner,
     include: string[],
     exclude: string[],
-    extensionConfigs: ExtensionConfig[]
+    extensionConfigs: ExtensionConfig[],
   ) {
     this.disposable.add(ctrl);
-    const extensions = extensionConfigs.flatMap(x => x.extensions);
+    const extensions = extensionConfigs.flatMap((x) => x.extensions);
     this.findPatterns = include.map((p) => {
       const pattern = path.posix.join(forceForwardSlashes(p), `**/*${jsExtensions(extensions)}`);
       return new vscode.RelativePattern(wf, pattern);
     });
 
-
     this.includeTest = picomatch(
       include.flatMap((i) =>
-        testPatterns(extensions).map((tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`)
+        testPatterns(extensions).map(
+          (tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`,
+        ),
       ),
       {
         ignore: exclude.map((e) => {
@@ -105,7 +104,7 @@ export class Controller {
         }),
         cwd: wf.uri.fsPath,
         posixSlashes: true,
-      }
+      },
     );
 
     ctrl.resolveHandler = this.resolveHandler();
@@ -168,7 +167,7 @@ export class Controller {
       parent: vscode.TestItem,
       node: IParsedNode,
       start: vscode.Location,
-      end: vscode.Location
+      end: vscode.Location,
     ): vscode.TestItem => {
       let item = parent.children.get(node.name);
       if (!item) {
@@ -183,11 +182,11 @@ export class Controller {
         const existing = seen.get(child.name);
         const start = sourceMap.originalPositionFor(
           child.location.start.line,
-          child.location.start.column
+          child.location.start.column,
         );
         const end = sourceMap.originalPositionFor(
           child.location.end.line,
-          child.location.end.column
+          child.location.end.column,
         );
         if (existing) {
           addDuplicateDiagnostic(start, existing);
@@ -213,7 +212,7 @@ export class Controller {
     for (const node of tree) {
       const start = sourceMap.originalPositionFor(
         node.location.start.line,
-        node.location.start.column
+        node.location.start.column,
       );
       const end = sourceMap.originalPositionFor(node.location.end.line, node.location.end.column);
       const file = last(this.getContainingItemsForFile(start.uri, { compiledFile: uri }))!.item!;
@@ -274,7 +273,7 @@ export class Controller {
   public async startWatchingWorkspace() {
     // we need to watch for *every* change due to https://github.com/microsoft/vscode/issues/60813
     const watcher = (this.watcher.value = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(this.wf, `**/*`)
+      new vscode.RelativePattern(this.wf, `**/*`),
     ));
 
     watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
@@ -331,18 +330,18 @@ const addDuplicateDiagnostic = (location: vscode.Location, existing: vscode.Test
   const diagnostic = new vscode.Diagnostic(
     location.range,
     "Duplicate tests cannot be run individually and will not be reported correctly by the test framework. Please rename them.",
-    vscode.DiagnosticSeverity.Warning
+    vscode.DiagnosticSeverity.Warning,
   );
 
   diagnostic.relatedInformation = [
     new vscode.DiagnosticRelatedInformation(
       new vscode.Location(existing.uri!, existing.range!),
-      "First declared here"
+      "First declared here",
     ),
   ];
 
   diagnosticCollection.set(
     location.uri,
-    diagnosticCollection.get(location.uri)?.concat([diagnostic]) || [diagnostic]
+    diagnosticCollection.get(location.uri)?.concat([diagnostic]) || [diagnostic],
   );
 };

@@ -35,7 +35,7 @@ const smMappingAccessor = (file: vscode.Uri, sm: TraceMap): IMappingAccessor => 
 
 export const parseSourceMap = (
   path: vscode.Uri,
-  contents: string
+  contents: string,
 ): IMappingAccessor | Promise<IMappingAccessor> => {
   const start = contents.lastIndexOf(smUrlComment);
   if (start === -1) {

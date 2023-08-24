@@ -20,7 +20,7 @@ const getRandomPipe = () => join(socketDir, `nodejs-test.${process.pid}-${socket
 
 export type RunHandler = (
   request: vscode.TestRunRequest,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
 ) => Promise<void>;
 
 export class TestRunner {
@@ -32,7 +32,7 @@ export class TestRunner {
     private readonly nodejsPath: ConfigValue<string>,
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
-    private readonly extensions: ConfigValue<ExtensionConfig[]>
+    private readonly extensions: ConfigValue<ExtensionConfig[]>,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
   }
@@ -40,7 +40,7 @@ export class TestRunner {
   public makeHandler(
     wf: vscode.WorkspaceFolder,
     ctrl: vscode.TestController,
-    debug: boolean
+    debug: boolean,
   ): RunHandler {
     return async (request, token) => {
       const files = await this.solveArguments(ctrl, request);
@@ -82,7 +82,7 @@ export class TestRunner {
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
             const extensions = this.extensions.value;
-            
+
             const reg = Contract.registerServerToStream(
               contract,
               new NodeJsMessageStream(stream, stream),
@@ -145,7 +145,7 @@ export class TestRunner {
                     outputQueue.enqueue(() => run.passed(test, duration));
                   }
                 },
-              }
+              },
             );
 
             reg.client
@@ -157,8 +157,8 @@ export class TestRunner {
                   case CompleteStatus.NodeVersionOutdated:
                     return reject(
                       new Error(
-                        `This extension only works with Node.js version 19 and above (you have ${message}). You can change the setting '${this.nodejsPath.key}' if you want to use a different Node.js executable.`
-                      )
+                        `This extension only works with Node.js version 19 and above (you have ${message}). You can change the setting '${this.nodejsPath.key}' if you want to use a different Node.js executable.`,
+                      ),
                     );
                 }
               })
@@ -169,11 +169,11 @@ export class TestRunner {
           server.listen(socket);
 
           const resolvedNodejsParameters = this.nodejsParameters.value.map((p) =>
-            replaceVariables(p)
+            replaceVariables(p),
           );
           this.spawnWorker(wf, debug, socket, run.token, resolvedNodejsParameters).then(
             () => reject(new Error("Worker executed without signalling its completion")),
-            reject
+            reject,
           );
         });
       } catch (e) {
@@ -191,7 +191,7 @@ export class TestRunner {
     debug: boolean,
     socketPath: string,
     ct: vscode.CancellationToken,
-    resolvedNodejsParameters: string[]
+    resolvedNodejsParameters: string[],
   ) {
     if (!debug) {
       await new Promise<void>((resolve, reject) => {
@@ -294,7 +294,7 @@ export class TestRunner {
             rec.include = [];
             addTestsToFileRecord(
               rec,
-              [...test.children].map(([, t]) => t)
+              [...test.children].map(([, t]) => t),
             );
           }
         }

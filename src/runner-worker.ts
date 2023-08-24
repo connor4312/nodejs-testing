@@ -27,7 +27,11 @@ const enum C {
 
 // todo: this can be simplified with https://github.com/nodejs/node/issues/46045
 
-const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, files, extensions }) => {
+const start: (typeof contract)["TClientHandler"]["start"] = async ({
+  concurrency,
+  files,
+  extensions,
+}) => {
   const majorVersion = /^v([0-9]+)/.exec(process.version);
   if (!majorVersion || Number(majorVersion[1]) < 19) {
     return { status: CompleteStatus.NodeVersionOutdated, message: process.version };
@@ -43,7 +47,7 @@ const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, 
   return { status: CompleteStatus.Done };
 };
 
-async function doWork(prefix: string, queue: ITestRunFile[], extensions:ExtensionConfig[]) {
+async function doWork(prefix: string, queue: ITestRunFile[], extensions: ExtensionConfig[]) {
   while (queue.length) {
     const next = queue.pop()!;
 
@@ -93,13 +97,13 @@ async function doWork(prefix: string, queue: ITestRunFile[], extensions:Extensio
           actual: a.diag.actual !== undefined ? JSON.stringify(a.diag.actual, null, 2) : undefined,
           stack: a.diag.stack
             ? // node's runner does some primitive stack cleaning that we need to
-            // undo so stack-trace-parser can understand it
-            parseStackTrace(
-              a.diag.stack
-                .split("\n")
-                .map((l: string) => `  at ${l}`)
-                .join("\n")
-            )
+              // undo so stack-trace-parser can understand it
+              parseStackTrace(
+                a.diag.stack
+                  .split("\n")
+                  .map((l: string) => `  at ${l}`)
+                  .join("\n"),
+              )
             : undefined,
           status: a.skip || a.todo ? Result.Skipped : a.ok ? Result.Ok : Result.Failed,
         });
@@ -110,12 +114,12 @@ async function doWork(prefix: string, queue: ITestRunFile[], extensions:Extensio
 
     await new Promise<void>((resolve) => {
       server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
-      const args = []
+      const args = [];
       const ext = path.extname(next.path);
-      if(extensions) {
-        const parameters = extensions.find(x=> x.extensions.some( (y:string) => `.${y}`== ext))?.parameters;
-        if(parameters)
-          args.push(...parameters);
+      if (extensions) {
+        const parameters = extensions.find((x) => x.extensions.some((y: string) => `.${y}` == ext))
+          ?.parameters;
+        if (parameters) args.push(...parameters);
       }
 
       args.push(...["--require", join(__dirname, "runner-loader.js")]);
@@ -163,5 +167,5 @@ const { server } = Contract.getServerFromStream(
   contract,
   new NodeJsMessageStream(socket, socket),
   {},
-  { start }
+  { start },
 );

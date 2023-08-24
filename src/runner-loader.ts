@@ -13,7 +13,7 @@ for (const channel of ["stderr", "stdout"] as const) {
       const stack = parse(stackObj.stack);
 
       const firstNotInternal = stack.findIndex(
-        (s, i) => i > 0 && s.file?.startsWith("node:") === false
+        (s, i) => i > 0 && s.file?.startsWith("node:") === false,
       );
       const atTestRunner = stack.findIndex((s) => s.file?.includes("node:internal/test_runner"));
 

@@ -22,7 +22,7 @@ export function* getContainingItemsForFile(
   wf: vscode.WorkspaceFolder,
   ctrl: vscode.TestController,
   uri: vscode.Uri,
-  createOpts?: ICreateOpts
+  createOpts?: ICreateOpts,
 ): IterableIterator<{ children: vscode.TestItemCollection; item?: vscode.TestItem }> {
   const folderPath = wf.uri.path.split("/");
   const filePath = uri.path.split("/");
@@ -40,13 +40,13 @@ export function* getContainingItemsForFile(
       const item = ctrl.createTestItem(
         filePath[i],
         filePath[i],
-        uri.with({ path: filePath.slice(0, i + 1).join(path.sep) })
+        uri.with({ path: filePath.slice(0, i + 1).join(path.sep) }),
       );
       testMetadata.set(
         item,
         i === filePath.length - 1
           ? { type: ItemType.File, compiledIn: createOpts.compiledFile }
-          : { type: ItemType.Directory }
+          : { type: ItemType.Directory },
       );
       children.add(item);
       children = item.children;

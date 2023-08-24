@@ -26,7 +26,7 @@ export const contract = makeContract({
       }),
     }),
     output: notificationType({
-      params: s.sString()
+      params: s.sString(),
     }),
     finished: notificationType({
       params: s.sObject({
@@ -56,7 +56,7 @@ export const contract = makeContract({
             path: s.sString(),
             // Test names to includes via --test-name-pattern.
             include: s.optionalProp(s.sArrayOf(s.sString())),
-          })
+          }),
         ),
         extensions: s.sArrayOf(
           s.sObject({
@@ -64,8 +64,9 @@ export const contract = makeContract({
             // may not be the same as the location pointed to by the `path`
             extensions: s.sArrayOf(s.sString()),
             // fs path of the file to run
-            parameters: s.sArrayOf(s.sString())}))
-          
+            parameters: s.sArrayOf(s.sString()),
+          }),
+        ),
       }),
       result: s.sObject({
         status: s.sNumber(),
@@ -75,13 +76,14 @@ export const contract = makeContract({
   },
 });
 
-export type IClient = typeof contract["TClientInterface"];
+export type IClient = (typeof contract)["TClientInterface"];
 
-export type ITestRunFile = typeof contract["client"]["start"]["paramsSerializer"]["T"]["files"][0];
+export type ITestRunFile =
+  (typeof contract)["client"]["start"]["paramsSerializer"]["T"]["files"][0];
 
-export type ITestRunResult = typeof contract["client"]["start"]["resultSerializer"]["T"];
+export type ITestRunResult = (typeof contract)["client"]["start"]["resultSerializer"]["T"];
 
-export type ILog = typeof log['T'];
+export type ILog = (typeof log)["T"];
 
 export const enum CompleteStatus {
   Done,

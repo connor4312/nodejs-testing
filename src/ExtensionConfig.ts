@@ -1,4 +1,4 @@
 interface ExtensionConfig {
-    extensions: string[];
-    parameters: string[];
+  extensions: string[];
+  parameters: string[];
 }

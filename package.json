@@ -130,7 +130,8 @@
     "compile:testcases": "node testCases/.esbuild.js",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "tsc --noEmit && vitest run --dir src",
-    "test:integration": "node .esbuild.js --no-minify && node out/test/run"
+    "test:integration": "node .esbuild.js --no-minify && node out/test/run",
+    "prettier":"prettier --write src"
   },
   "devDependencies": {
     "@types/estraverse": "^5.1.2",
@@ -147,6 +148,7 @@
     "esbuild": "^0.17.5",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
+    "prettier": "^3.0.2",
     "sinon": "^15.0.1",
     "typescript": "^4.9.3",
     "vitest": "^0.26.2"

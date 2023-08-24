@@ -37,7 +37,7 @@ export class SourceMapStore {
         const contentsProm = fs.readFile(uri.fsPath, "utf8") || Promise.resolve(contents);
         return (rec.accessor = contentsProm.then(
           (c) => parseSourceMap(uri, c),
-          () => identityMapping(uri)
+          () => identityMapping(uri),
         ));
       },
       dispose() {
