@@ -8,6 +8,11 @@ export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
   const includePattern = new ConfigValue("include", ["${workspaceFolder}"]);
   const excludePatterns = new ConfigValue("exclude", ["**/node_modules/**"]);
+  const extensions = new ConfigValue("extensions", [
+    {
+      "extensions": ["mjs", "cjs", "js"],
+      "parameters": []
+    }]);
 
   const runner = new TestRunner(
     smStore,
@@ -15,12 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
     new ConfigValue("nodejsPath", "node"),
     context.extensionUri.fsPath,
     new ConfigValue("nodejsParameters", []),
-    new ConfigValue("extensions", [
-      {
-        "extensions": ["mjs", "cjs", "js"],
-        "parameters": []
-      }])
-  );
+    extensions);
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
@@ -46,7 +46,8 @@ export async function activate(context: vscode.ExtensionContext) {
             smStore,
             runner,
             includePattern.value,
-            excludePatterns.value
+            excludePatterns.value,
+            extensions.value
           )
         );
       }
@@ -90,6 +91,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     includePattern.onChange(refreshFolders),
     excludePatterns.onChange(refreshFolders),
+    extensions.onChange(refreshFolders),
     new vscode.Disposable(() => ctrls.forEach((c) => c.dispose()))
   );
 

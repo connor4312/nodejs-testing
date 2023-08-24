@@ -43,7 +43,7 @@ const start: typeof contract["TClientHandler"]["start"] = async ({ concurrency, 
   return { status: CompleteStatus.Done };
 };
 
-async function doWork(prefix: string, queue: ITestRunFile[], extensions:any[]) {
+async function doWork(prefix: string, queue: ITestRunFile[], extensions:ExtensionConfig[]) {
   while (queue.length) {
     const next = queue.pop()!;
 
@@ -110,8 +110,8 @@ async function doWork(prefix: string, queue: ITestRunFile[], extensions:any[]) {
 
     await new Promise<void>((resolve) => {
       server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
-      let args = []
-      let ext = path.extname(next.path);
+      const args = []
+      const ext = path.extname(next.path);
       if(extensions) {
         const parameters = extensions.find(x=> x.extensions.some( (y:string) => `.${y}`== ext))?.parameters;
         if(parameters)

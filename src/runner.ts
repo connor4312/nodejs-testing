@@ -32,7 +32,7 @@ export class TestRunner {
     private readonly nodejsPath: ConfigValue<string>,
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
-    public readonly extensions: ConfigValue<any[]>
+    private readonly extensions: ConfigValue<ExtensionConfig[]>
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
   }
