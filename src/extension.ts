@@ -34,10 +34,10 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   const syncWorkspaceFolders = () => {
-    if (extensions.value == null || extensions.value.length == 0) {
-      const msg = "node: test runner:  nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
+    if (extensions.value?.length==0) {
+      const msg = "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
       vscode.window.showErrorMessage(msg);
-      throw new Error(msg);
+      return;
     }
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
