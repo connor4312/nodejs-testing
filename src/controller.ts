@@ -16,7 +16,7 @@ function jsExtensions(extensions: string[]) {
   let jsExtensions = "";
 
   if (extensions == null || extensions.length == 0) {
-    throw "No Extensions defined";
+    throw "this case never accurs";
   } else if (extensions.length == 1) {
     jsExtensions = `.${extensions[0]}`;
   } else {
