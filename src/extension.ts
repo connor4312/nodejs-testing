@@ -34,7 +34,7 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   const syncWorkspaceFolders = () => {
-    if (extensions.value?.length==0) {
+    if (!extensions.value?.length) {
       const msg = "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
       vscode.window.showErrorMessage(msg);
       return;
