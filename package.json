@@ -16,7 +16,7 @@
     "Testing"
   ],
   "activationEvents": [
-    "workspaceContains:**/*.{js,cjs,mjs}",
+    "workspaceContains:**/*.{js,cjs,mjs,ts,cts,mts}",
     "onCommand:nodejs-testing.get-controllers-for-test"
   ],
   "icon": "icon.png",
@@ -32,6 +32,7 @@
           },
           "nodejs-testing.nodejsParameters": {
             "type": "array",
+            "deprecationMessage": "Use nodejs-testing.extensions instead!",
             "markdownDescription": "Additional Parameters that will be passed onto the worker node process. Each parameter is a separate item in the array. \n\n To get for example `node --import /abs/path/to/file.js` you need 2 entries \n 1. `--import` \n 2. `${workspaceFolder}/to/file.js`. Attention, this process does not initiate the unit tests. The parameters for the process that starts the unit tests are defined using the `extensions` data structure.",
             "default": [],
             "items": {
@@ -66,7 +67,7 @@
           },
           "nodejs-testing.extensions": {
             "type": "array",
-            "markdownDescription": "With this data structure, you can specify, in which file types unit tests should be searched for. For the respective file types, additional parameters can be defined, that are passed to the process, that initiates the unit tests.",
+            "markdownDescription": "A list of test extensions to search for, and optional additional Node.js parameters to pass when running those test files. It defaults to\n\n```json\n[\n  {\n    \"extensions\": [\"mjs\", \"cjs\", \"js\"],\n    \"parameters\": []\n  }\n]\n```\n\n...but is useful for configuring loaders for other file types. For example, to run TypeScript tests, you could use\n\n```json\n{\n  \"nodejs-testing.extensions\": [\n    {\n      \"extensions\": [\"mjs\", \"cjs\", \"js\"],\n      \"parameters\": []\n    },\n    {\n      \"extensions\": [\"mts\", \"cts\", \"ts\"],\n      \"parameters\": [\"--loader\", \"tsx\"]\n    }\n  ]\n}\n```\n\nYou can also import other helpers by adding parameters like `[\"--import\", \"${workspaceFolder}/path/to/file.js\"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.",
             "default": [
               {
                 "extensions": [
@@ -81,11 +82,14 @@
               "type": "object",
               "default": {
                 "extensions": [
-                  "mjs",
-                  "cjs",
-                  "js"
+                  "mts",
+                  "cts",
+                  "ts"
                 ],
-                "parameters": []
+                "parameters": [
+                  "--loader",
+                  "tsx"
+                ]
               },
               "required": [
                 "extensions",
@@ -131,17 +135,19 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "tsc --noEmit && vitest run --dir src",
     "test:integration": "node .esbuild.js --no-minify && node out/test/run",
-    "prettier":"prettier --write src"
+    "prettier": "prettier --write src"
   },
   "devDependencies": {
     "@types/estraverse": "^5.1.2",
     "@types/estree": "^1.0.0",
     "@types/glob": "^8.0.1",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "18.x",
     "@types/picomatch": "^2.3.0",
     "@types/sinon": "^10.0.13",
+    "@types/split2": "^4.2.0",
     "@types/vscode": "^1.74.0",
+    "@types/ws": "^8.5.5",
     "@vscode/test-electron": "^2.2.3",
     "acorn": "^8.8.1",
     "chalk": "^5.2.0",
@@ -150,6 +156,7 @@
     "mocha": "^10.2.0",
     "prettier": "^3.0.2",
     "sinon": "^15.0.1",
+    "tsx": "^3.12.8",
     "typescript": "^4.9.3",
     "vitest": "^0.26.2"
   },
@@ -166,7 +173,9 @@
     "data-uri-to-buffer": "^4.0.0",
     "estraverse": "^5.3.0",
     "picomatch": "^2.3.1",
+    "split2": "^4.2.0",
     "stacktrace-parser": "^0.1.10",
-    "tap-parser": "^12.0.1"
+    "tap-parser": "^12.0.1",
+    "ws": "^8.13.0"
   }
 }

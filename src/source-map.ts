@@ -47,8 +47,12 @@ export const parseSourceMap = (
     end = contents.length;
   }
 
-  const pathAsStr = path.toString();
   const sourceMapUrl = contents.slice(start + smUrlComment.length, end).trim();
+  return parseSourceMapURL(path, sourceMapUrl);
+};
+
+export const parseSourceMapURL = (path: vscode.Uri, sourceMapUrl: string) => {
+  const pathAsStr = path.toString();
   if (sourceMapUrl.startsWith("data:")) {
     const data = dataUriToBuffer(sourceMapUrl);
     return smMappingAccessor(path, new TraceMap(data.toString(), pathAsStr));

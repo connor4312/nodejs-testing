@@ -1,6 +1,25 @@
+import * as inspector from "node:inspector";
+import { beforeEach } from "node:test";
+import { isMainThread } from "node:worker_threads";
 import { parse } from "stacktrace-parser";
 
 const stackObj = { stack: "" };
+
+if (isMainThread) {
+  if (!inspector.url()) {
+    inspector.open(0, undefined, true);
+  } else {
+    if (process.env.NODE_OPTIONS?.includes("--inspect-publish-uid=http")) {
+      process.stderr.write(`Debugger listening on ${inspector.url()}\n`);
+    }
+    inspector.waitForDebugger();
+  }
+}
+
+const ogStdoutWrite = process.stdout.write;
+beforeEach((context) => {
+  ogStdoutWrite.call(process.stdout, `# Starting test: ${context.name}\n`);
+});
 
 // Kinda delicate thing to separate test tap output from output logged by tests.
 // Node.js doesn't know about output that happens when running tests, so we put

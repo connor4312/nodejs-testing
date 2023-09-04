@@ -2,13 +2,13 @@ const { describe, it } = require("node:test");
 const { strictEqual } = require("node:assert");
 
 describe("math", () => {
-  it("addition",async () => {
-    console.log('some log');
+  it("addition", async () => {
+    console.log("some log");
     strictEqual(1 + 1, 2);
   });
 
-  it("subtraction",async () => {
-    process.stdout.write('another log');
+  it("subtraction", async () => {
+    process.stdout.write("another log");
     strictEqual(1 - 1, 0);
   });
 });

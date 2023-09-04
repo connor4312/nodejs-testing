@@ -6,12 +6,13 @@ import { promises as fs } from "fs";
 import { createServer } from "net";
 import { cpus, tmpdir } from "os";
 import { join } from "path";
+import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { last } from "./iterable";
 import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
-import { CompleteStatus, ITestRunFile, Result, contract } from "./runner-protocol";
+import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
 
 let socketCounter = 0;
@@ -64,10 +65,14 @@ export class TestRunner {
         return item;
       };
 
+      // inline source maps read from the runtime. These will both be definitive
+      // and possibly the only ones presents from transpiled code.
+      const inlineSourceMaps = new Map<string, string>();
+      const smStore = this.smStore.createScoped();
       const mapLocation = async (path: string, line: number | null, col: number | null) => {
         // stacktraces can have file URIs on some platforms (#7)
         const fileUri = path.startsWith("file:") ? vscode.Uri.parse(path) : vscode.Uri.file(path);
-        const smMaintainer = this.smStore.maintain(fileUri);
+        const smMaintainer = smStore.maintain(fileUri, inlineSourceMaps.get(fileUri.fsPath));
         run.token.onCancellationRequested(() => smMaintainer.dispose());
         const sourceMap = await (smMaintainer.value || smMaintainer.refresh());
         return sourceMap.originalPositionFor(line || 1, col || 0);
@@ -83,6 +88,16 @@ export class TestRunner {
             run.token.onCancellationRequested(stream.end, stream);
             const extensions = this.extensions.value;
 
+            const onLog = (test: vscode.TestItem | undefined, prefix: string, log: ILog) => {
+              const location = log.sf.file
+                ? mapLocation(log.sf.file, log.sf.lineNumber, log.sf.column)
+                : undefined;
+              outputQueue.enqueue(location, (location) => {
+                run.appendOutput(prefix);
+                run.appendOutput(log.chunk.replace(/\r?\n/g, "\r\n"), location, test);
+              });
+            };
+
             const reg = Contract.registerServerToStream(
               contract,
               new NodeJsMessageStream(stream, stream),
@@ -97,6 +112,15 @@ export class TestRunner {
 
                 output(line) {
                   outputQueue.enqueue(() => run.appendOutput(`${line}\r\n`));
+                },
+
+                sourceMap({ testFile, sourceMapURL }) {
+                  inlineSourceMaps.set(testFile, sourceMapURL);
+                },
+
+                log({ id, prefix, log }) {
+                  const test = id ? getTestByPath(id) : undefined;
+                  onLog(test, prefix, log);
                 },
 
                 finished({
@@ -116,13 +140,7 @@ export class TestRunner {
                   }
 
                   for (const l of logs) {
-                    const location = l.sf.file
-                      ? mapLocation(l.sf.file, l.sf.lineNumber, l.sf.column)
-                      : undefined;
-                    outputQueue.enqueue(location, (location) => {
-                      run.appendOutput(logPrefix);
-                      run.appendOutput(l.chunk.replace(/\r?\n/g, "\r\n"), location, test);
-                    });
+                    onLog(test, logPrefix, l);
                   }
 
                   if (status === Result.Failed) {
@@ -149,7 +167,11 @@ export class TestRunner {
             );
 
             reg.client
-              .start({ files, concurrency, extensions })
+              .start({
+                files,
+                concurrency,
+                extensions,
+              })
               .then(({ status, message }) => {
                 switch (status) {
                   case CompleteStatus.Done:
@@ -162,7 +184,8 @@ export class TestRunner {
                     );
                 }
               })
-              .catch(reject);
+              .catch(reject)
+              .finally(() => reg.client.kill());
           });
           run.token.onCancellationRequested(server.close, server);
           server.once("error", reject);
@@ -194,13 +217,14 @@ export class TestRunner {
     resolvedNodejsParameters: string[],
   ) {
     if (!debug) {
-      await new Promise<void>((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
         const stderr: Buffer[] = [];
         const cp = spawn(this.nodejsPath.value, [
           ...resolvedNodejsParameters,
           this.workerPath,
           socketPath,
         ]);
+        cp.stdout.pipe(split()).on("data", (d) => console.log(`[worker] ${d}`));
         cp.stderr.on("data", (d) => stderr.push(d));
         cp.on("error", reject);
         cp.on("exit", (code) => {

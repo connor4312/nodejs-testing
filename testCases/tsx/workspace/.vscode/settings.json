@@ -1,0 +1,8 @@
+{
+  "nodejs-testing.extensions": [
+    {
+      "extensions": ["ts", "mts"],
+      "parameters": ["--loader", "tsx"]
+    }
+  ]
+}

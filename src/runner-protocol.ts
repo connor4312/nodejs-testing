@@ -28,6 +28,19 @@ export const contract = makeContract({
     output: notificationType({
       params: s.sString(),
     }),
+    sourceMap: notificationType({
+      params: s.sObject({
+        testFile: s.sString(),
+        sourceMapURL: s.sString(),
+      }),
+    }),
+    log: notificationType({
+      params: s.sObject({
+        id: s.optionalProp(s.sArrayOf(s.sString())),
+        prefix: s.sString(),
+        log,
+      }),
+    }),
     finished: notificationType({
       params: s.sObject({
         id: s.sArrayOf(s.sString()),
@@ -44,6 +57,7 @@ export const contract = makeContract({
   },
   // the interface for servers to interact with clients
   client: {
+    kill: notificationType({}),
     start: requestType({
       params: s.sObject({
         concurrency: s.sNumber(),

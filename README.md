@@ -21,39 +21,32 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
 - `nodejs-testing.exclude` is the list of glob patterns that should be excluded from the search. Defaults to `['**/node_modules/**']`.
 - `nodejs-testing.concurrency` is how many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.
 - `nodejs-testing.nodejsPath` is the path to the Node.js binary to use for running tests. If unset, will try to find Node on your PATH.
-- `nodejs-testing.nodejsParameters` Additional Parameters that will be passed onto the worker node process. Each parameter is a separate item in the array.
+- `nodejs-testing.extensions` is a list of test extensions to search for, and optional additional Node.js parameters to pass when running those test files. It defaults to
 
-  To get for example `node --import /abs/path/to/file.js` you need 2 entries
+  ```json
+  [
+    {
+      "extensions": ["mjs", "cjs", "js"],
+      "parameters": []
+    }
+  ]
+  ```
 
-  1.  `--import`
-  2.  `${workspaceFolder}/to/file.js`
-Attention, this process does not initiate the unit tests. The parameters for the process that starts the unit tests are defined using the following data structure.
-- `nodejs-testing.extensions` With this data structure, you can specify, in which file types unit tests should be searched for. For the respective file types, additional parameters can be defined, that are passed to the worker process, that initiates the unit tests.
+  ...but is useful for configuring loaders for other file types. For example, to run TypeScript tests, you could use
 
-  **Example 1** (default):
-
-  `[{"extensions": ["mjs", "cjs", "js"], 
-      "parameters": [] }]`
-
-  **Example 2**: for typescript unittests without explicit compilation step:
-
-  ````
+  ```json
   {
     "nodejs-testing.extensions": [
-        {
-            "extensions": [
-                "mjs",
-                "cjs",
-                "js"
-            ],
-            "parameters": []
-        },
-        {
-            "extensions": [
-                "mts",
-                "cts",
-                "ts"
-            ],
-            "parameters": ["--loader","tsx"]
-        }]}
-````
+      {
+        "extensions": ["mjs", "cjs", "js"],
+        "parameters": []
+      },
+      {
+        "extensions": ["mts", "cts", "ts"],
+        "parameters": ["--loader", "tsx"]
+      }
+    ]
+  }
+  ```
+
+  You can also import other helpers by adding parameters like `["--import", "${workspaceFolder}/path/to/file.js"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.

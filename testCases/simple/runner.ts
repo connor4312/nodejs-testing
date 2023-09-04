@@ -73,7 +73,7 @@ it("handles file change", () =>
       test("subtraction", () => {
         strictEqual(1 - 2, -1);
       });
-    `
+    `,
     );
     await onChange;
 
@@ -120,7 +120,7 @@ it("runs tests in a file", async () => {
     new vscode.TestRunRequest([
       c.ctrl.items.get("hello.test.js")!,
       c.ctrl.items.get("withADot.test.js")!,
-    ])
+    ]),
   );
 
   run.expectStates({
@@ -136,7 +136,7 @@ it("runs subsets of tests", async () => {
     c,
     new vscode.TestRunRequest([
       c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("addition")!,
-    ])
+    ]),
   );
 
   run.expectStates({
@@ -153,7 +153,7 @@ it("runs mixed test requests", async () => {
       c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("addition")!,
       c.ctrl.items.get("withADot.test.js")!,
       c.ctrl.items.get("test")!,
-    ])
+    ]),
   );
 
   run.expectStates({
@@ -170,8 +170,8 @@ it("handles test excludes", async () => {
     c,
     new vscode.TestRunRequest(
       [c.ctrl.items.get("hello.test.js")!],
-      [c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("subtraction")!]
-    )
+      [c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("subtraction")!],
+    ),
   );
 
   run.expectStates({
@@ -187,7 +187,7 @@ it("handles file and directory excludes", async () => {
     new vscode.TestRunRequest(undefined, [
       c.ctrl.items.get("hello.test.js")!,
       c.ctrl.items.get("test")!,
-    ])
+    ]),
   );
 
   run.expectStates({
@@ -203,7 +203,7 @@ it("shows test output", async () => {
   const c = await getController();
   const run = await captureTestRun(
     c,
-    new vscode.TestRunRequest([c.ctrl.items.get("hello.test.js")!])
+    new vscode.TestRunRequest([c.ctrl.items.get("hello.test.js")!]),
   );
 
   const uri = vscode.Uri.file(path.join(__dirname, "workspace", "hello.test.js"));
@@ -215,7 +215,7 @@ it("shows test output", async () => {
   uri.fsPath;
 
   assert.deepStrictEqual(
-    run.output.filter((o) => !!o.test),
+    run.output.filter((o) => !!o.test).sort((a, b) => a.test!.id.localeCompare(b.test!.id)),
     [
       {
         output: "some log\r\n",
@@ -227,7 +227,7 @@ it("shows test output", async () => {
         location: new vscode.Location(uri, new vscode.Position(10, 20)),
         test: c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("subtraction"),
       },
-    ]
+    ],
   );
 });
 
@@ -312,7 +312,7 @@ describe("exclude/include settings", () => {
           test("subtraction", () => {
             strictEqual(1 - 2, -1);
           });
-        `
+        `,
       );
       await onChange;
       await expectTestTree(c, [

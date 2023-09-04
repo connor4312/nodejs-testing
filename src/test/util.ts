@@ -83,6 +83,18 @@ export class FakeTestRun implements vscode.TestRun {
   public states: { test: vscode.TestItem; state: TestState; message?: vscode.TestMessage }[] = [];
   public ended = false;
 
+  public terminalStates() {
+    const last: typeof this.states = [];
+    for (let i = this.states.length - 1; i >= 0; i--) {
+      const state = this.states[i];
+      if (!last.some((l) => l.test === state.test)) {
+        last.unshift(state);
+      }
+    }
+
+    return last;
+  }
+
   public expectStates(expected: { [test: string]: TestState[] }) {
     const actual: { [test: string]: TestState[] } = {};
     for (const { test, state } of this.states) {
