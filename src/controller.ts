@@ -77,13 +77,18 @@ export class Controller {
   ) {
     this.disposable.add(ctrl);
     const extensions = extensionConfigs.flatMap((x) => x.extensions);
-    this.findPatterns = include.map((p) => {
+
+    const relativeInclude = include
+      .map((i) => (path.isAbsolute(i) ? path.relative(wf.uri.fsPath, i) : i))
+      .filter((i) => !path.isAbsolute(i) && !i.startsWith(".."));
+
+    this.findPatterns = relativeInclude.map((p) => {
       const pattern = path.posix.join(forceForwardSlashes(p), `**/*${jsExtensions(extensions)}`);
       return new vscode.RelativePattern(wf, pattern);
     });
 
     this.includeTest = picomatch(
-      include.flatMap((i) =>
+      relativeInclude.flatMap((i) =>
         testPatterns(extensions).map(
           (tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`,
         ),
