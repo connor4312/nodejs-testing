@@ -112,7 +112,7 @@ export const parseSource = (text: string) => {
         let name: string;
         if (nameArg?.type === C.Literal && typeof nameArg.value === "string") {
           name = nameArg.value;
-        } else if (nameArg.type === C.TemplateLiteral && nameArg.quasis.length === 1) {
+        } else if (nameArg?.type === C.TemplateLiteral && nameArg.quasis.length === 1) {
           name = nameArg.quasis[0].value.cooked || nameArg.quasis[0].value.raw;
         } else {
           return;
