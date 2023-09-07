@@ -7,7 +7,7 @@ describe("math", () => {
     strictEqual(1 + 1, 2);
   });
 
-  it("subtraction", async () => {
+  it(`subtraction`, async () => {
     process.stdout.write("another log");
     strictEqual(1 - 1, 0);
   });

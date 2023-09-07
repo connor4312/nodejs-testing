@@ -14,6 +14,7 @@ const enum C {
   ObjectPattern = "ObjectPattern",
   ParenthesizedExpression = "ParenthesizedExpression",
   SequenceExpression = "SequenceExpression",
+  TemplateLiteral = "TemplateLiteral",
   Property = "Property",
   Literal = "Literal",
   Identifier = "Identifier",
@@ -108,9 +109,15 @@ export const parseSource = (text: string) => {
         }
       } else if (node.type === C.CallExpression) {
         const nameArg = node.arguments[0];
-        if (nameArg?.type !== C.Literal || typeof nameArg.value !== "string") {
+        let name: string;
+        if (nameArg?.type === C.Literal && typeof nameArg.value === "string") {
+          name = nameArg.value;
+        } else if (nameArg.type === C.TemplateLiteral && nameArg.quasis.length === 1) {
+          name = nameArg.quasis[0].value.cooked || nameArg.quasis[0].value.raw;
+        } else {
           return;
         }
+
         for (const test of idTests) {
           const fn = test(node);
           if (fn) {
@@ -118,7 +125,7 @@ export const parseSource = (text: string) => {
               children: [],
               location: node.loc!,
               fn,
-              name: nameArg.value,
+              name,
             };
             stack[stack.length - 1].r.children.push(child);
             stack.push({ node, r: child });
