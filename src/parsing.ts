@@ -56,6 +56,15 @@ const matchNamespaced =
       : undefined;
   };
 
+const getStringish = (nameArg: Node | undefined): string | undefined => {
+  if (nameArg?.type === C.Literal && typeof nameArg.value === "string") {
+    return nameArg.value;
+  }
+  if (nameArg?.type === C.TemplateLiteral && nameArg.quasis.length === 1) {
+    return nameArg.quasis[0].value.cooked || nameArg.quasis[0].value.raw;
+  }
+};
+
 export interface IParsedNode {
   fn: string;
   name: string;
@@ -91,8 +100,8 @@ export const parseSource = (text: string) => {
         node.init.callee.type === C.Identifier &&
         node.init.callee.name === "require"
       ) {
-        const firstArg = node.init.arguments[0];
-        if (firstArg?.type === C.Literal && firstArg.value === C.NodeTest) {
+        const firstArg = getStringish(node.init.arguments[0]);
+        if (firstArg === C.NodeTest) {
           if (node.id.type === C.ObjectPattern) {
             for (const prop of node.id.properties) {
               if (
@@ -108,13 +117,8 @@ export const parseSource = (text: string) => {
           }
         }
       } else if (node.type === C.CallExpression) {
-        const nameArg = node.arguments[0];
-        let name: string;
-        if (nameArg?.type === C.Literal && typeof nameArg.value === "string") {
-          name = nameArg.value;
-        } else if (nameArg?.type === C.TemplateLiteral && nameArg.quasis.length === 1) {
-          name = nameArg.quasis[0].value.cooked || nameArg.quasis[0].value.raw;
-        } else {
+        const name = getStringish(node.arguments[0]);
+        if (name === undefined) {
           return;
         }
 

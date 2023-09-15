@@ -101,4 +101,16 @@ const node_test_1 = require("node:test");
 
     expect(parseSource(src)).toMatchSnapshot();
   });
+
+  it("works with string literals", () => {
+    const src = `
+      const nt = require(\`node:test\`);
+
+      nt.describe(\`math\`, () => {
+        nt.it(\`addition\`, () => {});
+      });
+    `;
+
+    expect(parseSource(src)).toMatchSnapshot();
+  });
 });
