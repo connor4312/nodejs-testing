@@ -14,6 +14,7 @@ import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
 import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
+import { convertAnsiTextToHtml, doesTextContainAnsiCodes } from "./ansi-converter";
 
 let socketCounter = 0;
 const socketDir = process.platform === "win32" ? "\\\\.\\pipe\\" : tmpdir();
@@ -82,7 +83,7 @@ export class TestRunner {
         const outputQueue = new OutputQueue();
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();
-          run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
+          run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => { }));
 
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
@@ -145,10 +146,20 @@ export class TestRunner {
 
                   if (status === Result.Failed) {
                     const asText = error || "Test failed";
-                    const testMessage =
-                      actual !== undefined && expected !== undefined
-                        ? vscode.TestMessage.diff(asText, expected, actual)
-                        : new vscode.TestMessage(asText);
+
+                    let testMessage: vscode.TestMessage;
+
+                    if (actual !== undefined && expected !== undefined) {
+                      testMessage = vscode.TestMessage.diff(asText, expected, actual);
+                    } else if (doesTextContainAnsiCodes(asText)) {
+                      const markdownString = new vscode.MarkdownString();
+                      markdownString.supportHtml = true;
+                      markdownString.isTrusted = true;
+                      markdownString.appendMarkdown(convertAnsiTextToHtml(asText));
+                      testMessage = new vscode.TestMessage(markdownString);
+                    } else {
+                      testMessage = new vscode.TestMessage(asText);
+                    }
                     const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
                     const location = lastFrame?.file
                       ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
