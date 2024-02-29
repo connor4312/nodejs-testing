@@ -92,6 +92,7 @@ export const contract = makeContract({
             parameters: s.sArrayOf(s.sString()),
           }),
         ),
+        extraEnv: s.sMap(s.sString()),
       }),
       result: s.sObject({
         status: s.sNumber(),

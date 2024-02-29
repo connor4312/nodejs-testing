@@ -2,7 +2,8 @@ import { replaceVariables } from "@c4312/vscode-variables";
 import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
 import { spawn } from "child_process";
-import { promises as fs } from "fs";
+import { parse as parseEnv } from "dotenv";
+import fs from "fs/promises";
 import { createServer } from "net";
 import { cpus, tmpdir } from "os";
 import { join } from "path";
@@ -36,6 +37,7 @@ export class TestRunner {
     private readonly style: ConfigValue<Style>,
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
+    private readonly envFile: ConfigValue<string>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
@@ -84,13 +86,18 @@ export class TestRunner {
 
       try {
         const outputQueue = new OutputQueue();
+
+        const extensions = this.extensions.value;
+        const extraEnv = this.envFile.value
+          ? parseEnv(await fs.readFile(replaceVariables(this.envFile.value), "utf-8"))
+          : {};
+
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();
           run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
 
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
-            const extensions = this.extensions.value;
 
             const onLog = (test: vscode.TestItem | undefined, prefix: string, log: ILog) => {
               const location = log.sf?.file
@@ -185,6 +192,7 @@ export class TestRunner {
                 concurrency,
                 extensions,
                 verbose: this.verbose.value,
+                extraEnv,
               })
               .then(({ status, message }) => {
                 switch (status) {
