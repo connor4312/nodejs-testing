@@ -38,6 +38,7 @@ export class TestRunner {
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
     private readonly envFile: ConfigValue<string>,
+    private readonly env: ConfigValue<Record<string, string>>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
@@ -88,9 +89,14 @@ export class TestRunner {
         const outputQueue = new OutputQueue();
 
         const extensions = this.extensions.value;
-        const extraEnv = this.envFile.value
-          ? parseEnv(await fs.readFile(replaceVariables(this.envFile.value), "utf-8"))
-          : {};
+        const envFile = this.envFile.value
+          ? await fs.readFile(replaceVariables(this.envFile.value))
+          : null;
+        const envFileValues = envFile ? parseEnv(envFile) : {};
+        const extraEnv = {
+          ...envFileValues,
+          ...this.env.value,
+        };
 
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();

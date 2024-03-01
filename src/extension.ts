@@ -25,6 +25,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.extensionUri.fsPath,
     new ConfigValue("nodejsParameters", []),
     new ConfigValue("envFile", ""),
+    new ConfigValue("env", {}),
     extensions,
   );
 

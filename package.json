@@ -128,8 +128,16 @@
           },
           "nodejs-testing.envFile": {
             "type": "string",
-            "description": "Absolute path to a file containing environment variable definitions.\n\nNote: template parameters like ${workspaceFolder} will be resolved.",
+            "markdownDescription": "Absolute path to a file containing environment variable definitions.\n\nNote: template parameters like ${workspaceFolder} will be resolved.",
             "default": ""
+          },
+          "nodejs-testing.env": {
+            "type": "object",
+            "markdownDescription": "Environment variables passed to the program. The value null removes the variable from the environment.\n\nNote: This takes precedence over envFile.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {}
           }
         }
       }
