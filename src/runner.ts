@@ -12,8 +12,9 @@ import { ConfigValue } from "./configValue";
 import { last } from "./iterable";
 import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
-import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
+import { CompleteStatus, ILog, ITestRunFile, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
+import { Style, styleFactories } from "./styles";
 
 let socketCounter = 0;
 const socketDir = process.platform === "win32" ? "\\\\.\\pipe\\" : tmpdir();
@@ -31,6 +32,8 @@ export class TestRunner {
     private readonly smStore: SourceMapStore,
     private readonly concurrency: ConfigValue<number>,
     private readonly nodejsPath: ConfigValue<string>,
+    private readonly verbose: ConfigValue<boolean>,
+    private readonly style: ConfigValue<Style>,
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
@@ -69,6 +72,7 @@ export class TestRunner {
       // and possibly the only ones presents from transpiled code.
       const inlineSourceMaps = new Map<string, string>();
       const smStore = this.smStore.createScoped();
+      const style = styleFactories[this.style.value]();
       const mapLocation = async (path: string, line: number | null, col: number | null) => {
         // stacktraces can have file URIs on some platforms (#7)
         const fileUri = path.startsWith("file:") ? vscode.Uri.parse(path) : vscode.Uri.file(path);
@@ -89,9 +93,20 @@ export class TestRunner {
             const extensions = this.extensions.value;
 
             const onLog = (test: vscode.TestItem | undefined, prefix: string, log: ILog) => {
-              const location = log.sf.file
-                ? mapLocation(log.sf.file, log.sf.lineNumber, log.sf.column)
+              const location = log.sf?.file
+                ? mapLocation(log.sf.file, log.sf.lineNumber, log.sf.column).then(
+                    (r) => {
+                      return r;
+                    },
+                    (err) => {
+                      run.appendOutput(
+                        `Error while mapping location from ${log.sf!.file}, please report: ${err}`,
+                      );
+                      return undefined;
+                    },
+                  )
                 : undefined;
+
               outputQueue.enqueue(location, (location) => {
                 run.appendOutput(prefix);
                 run.appendOutput(log.chunk.replace(/\r?\n/g, "\r\n"), location, test);
@@ -107,6 +122,23 @@ export class TestRunner {
                   const test = getTestByPath(id);
                   if (test) {
                     run.started(test);
+                    outputQueue.enqueue(() => run.appendOutput(style.started(test)));
+                  }
+                },
+
+                skipped({ id }) {
+                  const test = getTestByPath(id);
+                  if (test) {
+                    run.skipped(test);
+                    outputQueue.enqueue(() => run.appendOutput(style.skipped(test)));
+                  }
+                },
+
+                passed({ id, duration }) {
+                  const test = getTestByPath(id);
+                  if (test) {
+                    run.passed(test, duration);
+                    outputQueue.enqueue(() => run.appendOutput(style.passed(test)));
                   }
                 },
 
@@ -123,45 +155,26 @@ export class TestRunner {
                   onLog(test, prefix, log);
                 },
 
-                finished({
-                  id,
-                  status,
-                  duration,
-                  actual,
-                  expected,
-                  error,
-                  stack,
-                  logs,
-                  logPrefix,
-                }) {
+                failed({ id, duration, actual, expected, error, stack }) {
                   const test = getTestByPath(id);
                   if (!test) {
                     return;
                   }
 
-                  for (const l of logs) {
-                    onLog(test, logPrefix, l);
-                  }
-
-                  if (status === Result.Failed) {
-                    const asText = error || "Test failed";
-                    const testMessage =
-                      actual !== undefined && expected !== undefined
-                        ? vscode.TestMessage.diff(asText, expected, actual)
-                        : new vscode.TestMessage(asText);
-                    const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
-                    const location = lastFrame?.file
-                      ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
-                      : undefined;
-                    outputQueue.enqueue(location, (location) => {
-                      testMessage.location = location;
-                      run.failed(test, testMessage);
-                    });
-                  } else if (status === Result.Skipped) {
-                    outputQueue.enqueue(() => run.skipped(test));
-                  } else if (status === Result.Ok) {
-                    outputQueue.enqueue(() => run.passed(test, duration));
-                  }
+                  const asText = error || "Test failed";
+                  const testMessage =
+                    actual !== undefined && expected !== undefined
+                      ? vscode.TestMessage.diff(asText, expected, actual)
+                      : new vscode.TestMessage(asText);
+                  const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
+                  const location = lastFrame?.file
+                    ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
+                    : undefined;
+                  outputQueue.enqueue(location, (location) => {
+                    run.appendOutput(style.failed(test, asText));
+                    testMessage.location = location;
+                    run.failed(test, testMessage, duration);
+                  });
                 },
               },
             );
@@ -171,10 +184,12 @@ export class TestRunner {
                 files,
                 concurrency,
                 extensions,
+                verbose: this.verbose.value,
               })
               .then(({ status, message }) => {
                 switch (status) {
                   case CompleteStatus.Done:
+                    outputQueue.enqueue(() => run.appendOutput(style.done()));
                     return resolve(outputQueue.drain());
                   case CompleteStatus.NodeVersionOutdated:
                     return reject(

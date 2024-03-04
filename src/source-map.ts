@@ -1,5 +1,5 @@
 import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
-import dataUriToBuffer from "data-uri-to-buffer";
+import { dataUriToBuffer } from "data-uri-to-buffer";
 import * as fs from "fs/promises";
 import { fileURLToPath } from "url";
 import * as vscode from "vscode";
@@ -55,7 +55,8 @@ export const parseSourceMapURL = (path: vscode.Uri, sourceMapUrl: string) => {
   const pathAsStr = path.toString();
   if (sourceMapUrl.startsWith("data:")) {
     const data = dataUriToBuffer(sourceMapUrl);
-    return smMappingAccessor(path, new TraceMap(data.toString(), pathAsStr));
+    const jsonStr = new TextDecoder().decode(data.buffer);
+    return smMappingAccessor(path, new TraceMap(jsonStr, pathAsStr));
   }
 
   const sourceMapPath = fileURLToPath(new URL(sourceMapUrl, pathAsStr).toString());

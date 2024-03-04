@@ -1,8 +1,9 @@
 {
+  "nodejs-testing.verbose": true,
   "nodejs-testing.extensions": [
     {
       "extensions": ["ts", "mts"],
-      "parameters": ["--loader", "tsx"]
+      "parameters": ["--import", "tsx"]
     }
   ]
 }

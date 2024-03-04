@@ -14,23 +14,29 @@ it("runs tests", async () => {
   const run = await captureTestRun(c, new vscode.TestRunRequest());
 
   const uri = vscode.Uri.file(path.join(__dirname, "workspace", "hello.test.mts"));
+  // todo@connor4312: this is needed because vscode caches these values on
+  // underscore properties, and if they are not computed the assertion fails
+  // https://github.com/microsoft/vscode/issues/174680
+  uri.toString();
+  uri.fsPath;
+
   assert.deepStrictEqual(
-    run.output.filter((o) => !!o.test),
+    run.output.filter((o) => !!o.location),
     [
       {
         output: "some log\r\n",
-        location: new vscode.Location(uri, new vscode.Position(4, 10)),
-        test: c.ctrl.items.get("hello.test.mts")!.children.get("addition"),
+        location: new vscode.Location(uri, new vscode.Position(4, 11)),
+        test: undefined,
       },
     ],
   );
 
   const message = vscode.TestMessage.diff(
-    "Expected values to be strictly equal:\n\n2 !== 4",
+    "Expected values to be strictly equal:\n\n2 !== 4\n",
     "4",
     "2",
   );
-  message.location = new vscode.Location(uri, new vscode.Position(9, 2));
+  message.location = undefined;
 
   assert.deepStrictEqual(run.terminalStates(), [
     {

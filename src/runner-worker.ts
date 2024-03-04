@@ -6,12 +6,11 @@ import { connect } from "net";
 import * as path from "path";
 import { dirname, join } from "path";
 import split from "split2";
-import { parse as parseStackTrace } from "stacktrace-parser";
-import { Parser, Result as TapResult } from "tap-parser";
+import { StackFrame } from "stacktrace-parser";
 import { pathToFileURL } from "url";
 import { WebSocket } from "ws";
 import { escapeRegex } from "./regex";
-import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
+import { CompleteStatus, ITestRunFile, JsonFromReporter, contract } from "./runner-protocol";
 
 const colors = [
   ansiColors.redBright,
@@ -27,9 +26,14 @@ const enum C {
   LogPrefix = "# Log: ",
   TestPrefix = "# Subtest: ",
   StartingTestPrefix = "# Starting test: ",
+  AttachedPrefix = "Debugger attached",
+  ForHelpPrefix = "For help, see",
+  EndingPrefix = "Debugger ending on",
   ListeningPrefix = "Debugger listening on ",
   WaitingForDisconnect = "Waiting for the debugger to disconnect...",
 }
+
+const ignoredLines = [C.ForHelpPrefix, C.WaitingForDisconnect, C.AttachedPrefix, C.EndingPrefix];
 
 // todo: this can be simplified with https://github.com/nodejs/node/issues/46045
 
@@ -37,6 +41,7 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   concurrency,
   files,
   extensions,
+  verbose,
 }) => {
   const majorVersion = /^v([0-9]+)/.exec(process.version);
   if (!majorVersion || Number(majorVersion[1]) < 19) {
@@ -46,124 +51,161 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   const todo: Promise<void>[] = [];
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
-    todo.push(doWork(prefix, files, extensions));
+    todo.push(doWork(prefix, files, extensions, verbose));
   }
   await Promise.all(todo);
 
   return { status: CompleteStatus.Done };
 };
 
-async function doWork(prefix: string, queue: ITestRunFile[], extensions: ExtensionConfig[]) {
+async function doWork(
+  prefix: string,
+  queue: ITestRunFile[],
+  extensions: ExtensionConfig[],
+  verbose: boolean,
+) {
   while (queue.length) {
     const next = queue.pop()!;
-    // logs for unfinished tests, since TAP output may not be written before
-    // any TAP information for a test (or the next test!)
-    const logQueue: { name: string; logs: ILog[] }[] = [];
-
-    let currentId: string[] | undefined;
-    function connectParser(segments: string[], parser: Parser) {
-      parser.on("comment", (c: string) => {
-        if (c.startsWith(C.TestPrefix)) {
-          currentId = [...segments, c.slice(C.TestPrefix.length, -1)];
-          server.started({ id: currentId });
-        }
-      });
-
-      parser.on("child", (childParser: Parser) => {
-        const onComment = (c: string) => {
-          if (c.startsWith(C.TestPrefix)) {
-            const name = c.slice(C.TestPrefix.length, -1);
-            childParser.removeListener("comment", onComment);
-            connectParser([...segments, name], childParser);
-          }
-        };
-
-        childParser.on("comment", onComment);
-      });
-
-      parser.on("assert", (a: TapResult) => {
-        if (!currentId) {
-          return;
-        }
-
-        server.finished({
-          id: currentId,
-          duration: a.diag.duration_ms,
-          error: a.diag.error,
-          logs: logQueue.shift()?.logs || [],
-          logPrefix: prefix,
-          expected:
-            a.diag.expected !== undefined ? JSON.stringify(a.diag.expected, null, 2) : undefined,
-          actual: a.diag.actual !== undefined ? JSON.stringify(a.diag.actual, null, 2) : undefined,
-          stack: a.diag.stack
-            ? // node's runner does some primitive stack cleaning that we need to
-              // undo so stack-trace-parser can understand it
-              parseStackTrace(
-                a.diag.stack
-                  .split("\n")
-                  .map((l: string) => `  at ${l}`)
-                  .join("\n"),
-              )
-            : undefined,
-          status: a.skip || a.todo ? Result.Skipped : a.ok ? Result.Ok : Result.Failed,
-        });
-
-        currentId = undefined;
-      });
-    }
-
     await new Promise<void>((resolve) => {
-      server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
+      if (verbose) {
+        server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
+      }
       const args = [];
       const ext = path.extname(next.path);
       if (extensions) {
-        const parameters = extensions.find((x) => x.extensions.some((y: string) => `.${y}` == ext))
-          ?.parameters;
+        const parameters = extensions.find((x) =>
+          x.extensions.some((y: string) => `.${y}` == ext),
+        )?.parameters;
         if (parameters) args.push(...parameters);
       }
 
-      args.push(...["--require", join(__dirname, "runner-loader.js")]);
+      args.push("--test-reporter", pathToFileURL(join(__dirname, "runner-loader.js")).toString());
       for (const include of next.include || []) {
         args.push("--test-name-pattern", `^${escapeRegex(include)}$`);
       }
 
       args.push(next.path);
+      if (verbose) {
+        server.output(`${prefix}${path.basename(process.argv0)} ${args.join('" "')}`);
+      }
 
       const cp = spawn(process.argv0, args, {
         cwd: dirname(next.path),
         stdio: "pipe",
         env: {
-          // enable color for modules that use `supports-color` or similarq
+          // enable color for modules that use `supports-color` or similar
           FORCE_COLOR: "true",
           ...process.env,
         },
       });
-      const parser = new Parser();
-      connectParser([next.uri], parser);
-      parser.on("line", (line: string) => {
-        if (line.startsWith(C.LogPrefix)) {
-          const obj = JSON.parse(line.slice(C.LogPrefix.length));
-          if (logQueue.length) {
-            logQueue[logQueue.length - 1].logs.push(obj);
-          } else {
-            server.log({ id: currentId, prefix, log: obj });
-          }
-        } else if (line.startsWith(C.StartingTestPrefix)) {
-          logQueue.push({ name: line.slice(C.StartingTestPrefix.length).trimEnd(), logs: [] });
-        } else {
-          server.output(prefix + line.trimEnd());
-        }
-      });
-      parser.on("complete", () => resolve());
 
-      cp.stderr.pipe(split("\n")).on("data", (line: string) => {
-        if (line.startsWith(C.ListeningPrefix)) {
-          setupInspector(next.path, line.slice(C.ListeningPrefix.length));
-        } else if (line === C.WaitingForDisconnect) {
-          cp.kill();
+      // startId and finishId track the tests that have started running and are
+      // expected to finish, respectively. The Node test reporter emits dequeue
+      // and test start events in order and so we use these to track and form
+      // the complete test IDs.
+      const startId: string[] = [next.uri];
+      const finishId: string[] = [next.uri];
+      const setId = (id: string[], data: { nesting: number; name: string }) => {
+        id.length = data.nesting + 2;
+        id[data.nesting + 1] = data.name;
+      };
+      let inspector: WebSocket | undefined;
+
+      const handleLine = (line: string) => {
+        if (verbose) {
+          server.output(`${prefix}${line}`);
         }
+
+        let json: JsonFromReporter;
+        try {
+          json = JSON.parse(line);
+        } catch {
+          server.output(`${prefix}${line}`);
+          return;
+        }
+
+        switch (json.type) {
+          case "runner:log":
+            server.log({ prefix, log: json });
+            break;
+          case "test:dequeue":
+            setId(startId, json.data);
+            server.started({ id: startId });
+            break;
+          case "test:start":
+            setId(finishId, json.data);
+            break;
+          case "test:pass":
+            setId(finishId, json.data); // this should generally no-op? But just in case...
+            if (json.data.skip || json.data.todo) {
+              server.skipped({ id: finishId });
+            } else {
+              server.passed({ id: finishId, duration: json.data.details.duration_ms });
+            }
+            break;
+
+          case "test:fail":
+            setId(finishId, json.data); // this should generally no-op? But just in case...
+            const cause = json.data.details.error.cause;
+            const causeObj: {
+              actual?: any;
+              expected?: any;
+              _stack?: StackFrame[];
+              _message?: string;
+            } = cause && typeof cause === "object" ? cause : {};
+            const message =
+              causeObj._message ||
+              (typeof cause === "string" ? cause : JSON.stringify(cause, null, 2));
+
+            server.failed({
+              id: finishId,
+              duration: json.data.details.duration_ms,
+              error: message,
+              stack: causeObj._stack,
+              expected: typeof causeObj.expected === "string" ? causeObj.expected : undefined,
+              actual: typeof causeObj.actual === "string" ? causeObj.actual : undefined,
+            });
+            break;
+
+          case "test:plan":
+            if (json.data.nesting === 0) {
+              inspector?.close();
+            }
+            break;
+        }
+      };
+
+      cp.on("error", (e) => {
+        server.failed({
+          id: finishId,
+          error: String(e),
+        });
       });
-      cp.stdout.pipe(parser);
+
+      cp.stdout
+        .pipe(split("\n"))
+        .on("data", handleLine)
+        .on("end", () => {
+          if (verbose) {
+            server.output(`${prefix}stdout closed`);
+          }
+          resolve();
+        })
+        .resume();
+      cp.stderr
+        .pipe(split("\n"))
+        .on("data", (line: string) => {
+          if (line.startsWith(C.ListeningPrefix)) {
+            inspector = setupInspector(next.path, line.slice(C.ListeningPrefix.length));
+          } else if (line === C.WaitingForDisconnect) {
+            cp.kill();
+          } else if (ignoredLines.some((l) => line.startsWith(l))) {
+            // hide
+          } else {
+            handleLine(line);
+          }
+        })
+        .resume();
     });
   }
 }
@@ -176,24 +218,38 @@ async function doWork(prefix: string, queue: ITestRunFile[], extensions: Extensi
 function setupInspector(testFile: string, inspectorURL: string) {
   const expectedUrl = pathToFileURL(testFile).toString().toLowerCase();
   const enableReqId = 0;
+  let done = 0;
 
   const ws = new WebSocket(inspectorURL);
-  ws.on("message", (msg: string) => {
+  const onMessage = (msg: string) => {
     const line = JSON.parse(msg.toString());
     if (line.method === "Debugger.scriptParsed") {
       const params = line.params as import("inspector").Debugger.ScriptParsedEventDataType;
-      if (params.url.toLowerCase() === expectedUrl && params.sourceMapURL) {
-        server.sourceMap({ testFile, sourceMapURL: params.sourceMapURL });
-        ws.close();
+      if (params.url.toLowerCase() === expectedUrl) {
+        if (params.sourceMapURL) {
+          server.sourceMap({ testFile, sourceMapURL: params.sourceMapURL });
+        }
+        done++;
       }
     } else if (line.result && line.id === enableReqId) {
       ws.send(JSON.stringify({ method: "Runtime.runIfWaitingForDebugger", id: 1 }));
+      done++;
     }
-  });
+
+    if (done === 2) {
+      // we don't close the websocket, since it seems like doing so can sometimes
+      // make the debugged process exit prematurely(??)
+      ws.removeListener("message", onMessage);
+    }
+  };
+
+  ws.on("message", onMessage);
 
   ws.on("open", () => {
     ws.send(JSON.stringify({ method: "Debugger.enable", id: enableReqId }));
   });
+
+  return ws;
 }
 
 const socket = connect(process.argv[2]).on("error", (e) => {

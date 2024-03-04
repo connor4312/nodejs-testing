@@ -3,6 +3,7 @@ import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
 import { TestRunner } from "./runner";
 import { SourceMapStore } from "./source-map-store";
+import { Style } from "./styles";
 
 export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
@@ -19,6 +20,8 @@ export async function activate(context: vscode.ExtensionContext) {
     smStore,
     new ConfigValue("concurrency", 0),
     new ConfigValue("nodejsPath", "node"),
+    new ConfigValue("verbose", false),
+    new ConfigValue("style", Style.Spec),
     context.extensionUri.fsPath,
     new ConfigValue("nodejsParameters", []),
     extensions,
@@ -35,7 +38,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const syncWorkspaceFolders = () => {
     if (!extensions.value?.length) {
-      const msg = "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
+      const msg =
+        "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
       vscode.window.showErrorMessage(msg);
       return;
     }
@@ -108,4 +112,4 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() { }
+export function deactivate() {}

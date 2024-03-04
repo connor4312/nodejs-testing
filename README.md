@@ -43,7 +43,7 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
       },
       {
         "extensions": ["mts", "cts", "ts"],
-        "parameters": ["--loader", "tsx"]
+        "parameters": ["--import", "tsx"]
       }
     ]
   }
