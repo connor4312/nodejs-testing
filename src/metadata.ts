@@ -40,7 +40,7 @@ export function* getContainingItemsForFile(
       const item = ctrl.createTestItem(
         filePath[i],
         filePath[i],
-        uri.with({ path: filePath.slice(0, i + 1).join(path.sep) }),
+        vscode.Uri.file(filePath.slice(0, i + 1).join(path.sep)),
       );
       testMetadata.set(
         item,
