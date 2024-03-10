@@ -125,6 +125,19 @@
                 }
               }
             }
+          },
+          "nodejs-testing.envFile": {
+            "type": "string",
+            "markdownDescription": "Absolute path to a file containing environment variable definitions.\n\nNote: template parameters like ${workspaceFolder} will be resolved.",
+            "default": ""
+          },
+          "nodejs-testing.env": {
+            "type": "object",
+            "markdownDescription": "Environment variables passed to the program. The value null removes the variable from the environment.\n\nNote: This takes precedence over envFile.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {}
           }
         }
       }
@@ -184,6 +197,7 @@
     "acorn-loose": "^8.4.0",
     "ansi-colors": "^4.1.3",
     "data-uri-to-buffer": "^6.0.2",
+    "dotenv": "^16.4.5",
     "estraverse": "^5.3.0",
     "picomatch": "^4.0.1",
     "pretty-format": "^29.7.0",
