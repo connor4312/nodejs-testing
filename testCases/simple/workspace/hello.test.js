@@ -11,4 +11,4 @@ describe("math", () => {
     // process.stdout.write("another log");
     strictEqual(1 - 1, 0);
   });
-}
+});
