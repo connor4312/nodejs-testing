@@ -37,16 +37,21 @@ export class ConfigValue<T> {
   constructor(
     private readonly sectionKey: string,
     defaultValue: T,
+    configurationScope?: vscode.ConfigurationScope,
   ) {
     this.changeListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration(this.key)) {
         this.setValue(
-          vscode.workspace.getConfiguration(sectionName).get(sectionKey) ?? defaultValue,
+          vscode.workspace.getConfiguration(sectionName, configurationScope).get(sectionKey) ??
+            defaultValue,
         );
       }
     });
 
-    this.setValue(vscode.workspace.getConfiguration(sectionName).get(sectionKey) ?? defaultValue);
+    this.setValue(
+      vscode.workspace.getConfiguration(sectionName, configurationScope).get(sectionKey) ??
+        defaultValue,
+    );
   }
 
   public dispose() {

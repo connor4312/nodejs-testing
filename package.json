@@ -78,6 +78,20 @@
             "description": "The style of the test output.",
             "default": "spec"
           },
+          "nodejs-testing.pretest": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A command to run in your terminal before tests are run.",
+            "examples": [
+              [
+                "npm",
+                "run",
+                "pretest"
+              ]
+            ]
+          },
           "nodejs-testing.extensions": {
             "type": "array",
             "markdownDescription": "A list of test extensions to search for, and optional additional Node.js parameters to pass when running those test files. It defaults to\n\n```json\n[\n  {\n    \"extensions\": [\"mjs\", \"cjs\", \"js\"],\n    \"parameters\": []\n  }\n]\n```\n\n...but is useful for configuring loaders for other file types. For example, to run TypeScript tests, you could use\n\n```json\n{\n  \"nodejs-testing.extensions\": [\n    {\n      \"extensions\": [\"mjs\", \"cjs\", \"js\"],\n      \"parameters\": []\n    },\n    {\n      \"extensions\": [\"mts\", \"cts\", \"ts\"],\n      \"parameters\": [\"--loader\", \"tsx\"]\n    }\n  ]\n}\n```\n\nYou can also import other helpers by adding parameters like `[\"--import\", \"${workspaceFolder}/path/to/file.js\"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.",

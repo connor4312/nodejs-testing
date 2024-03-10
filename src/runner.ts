@@ -10,9 +10,11 @@ import { join } from "path";
 import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
+import { DisposableStore } from "./disposable";
 import { last } from "./iterable";
 import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
+import { Pretest } from "./pretest";
 import { CompleteStatus, ILog, ITestRunFile, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
 import { Style, styleFactories } from "./styles";
@@ -26,8 +28,9 @@ export type RunHandler = (
   token: vscode.CancellationToken,
 ) => Promise<void>;
 
-export class TestRunner {
+export class TestRunner implements vscode.Disposable {
   private readonly workerPath: string;
+  private readonly disposables = new DisposableStore();
 
   constructor(
     private readonly smStore: SourceMapStore,
@@ -40,8 +43,22 @@ export class TestRunner {
     private readonly envFile: ConfigValue<string>,
     private readonly env: ConfigValue<Record<string, string>>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
+    private readonly pretest: Pretest,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
+    this.disposables.add(concurrency);
+    this.disposables.add(nodejsPath);
+    this.disposables.add(verbose);
+    this.disposables.add(style);
+    this.disposables.add(nodejsParameters);
+    this.disposables.add(envFile);
+    this.disposables.add(env);
+    this.disposables.add(extensions);
+    this.disposables.add(pretest);
+  }
+
+  public dispose() {
+    this.disposables.dispose();
   }
 
   public makeHandler(
@@ -50,13 +67,21 @@ export class TestRunner {
     debug: boolean,
   ): RunHandler {
     return async (request, token) => {
-      const files = await this.solveArguments(ctrl, request);
+      const run = ctrl.createTestRun(request);
+      if (!(await this.pretest.run(wf.uri.fsPath, run, token))) {
+        run.end();
+        return;
+      }
+
       if (token.isCancellationRequested) {
         return;
       }
 
+      const files = await this.solveArguments(ctrl, request);
+      if (token.isCancellationRequested) {
+        return;
+      }
       const concurrency = this.concurrency.value || cpus().length;
-      const run = ctrl.createTestRun(request);
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
         const uri = vscode.Uri.parse(path[0]);
         let item = last(getContainingItemsForFile(wf, ctrl, uri))!.item;

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
+import { Pretest } from "./pretest";
 import { TestRunner } from "./runner";
 import { SourceMapStore } from "./source-map-store";
 import { Style } from "./styles";
@@ -15,19 +16,6 @@ export async function activate(context: vscode.ExtensionContext) {
       parameters: [],
     },
   ]);
-
-  const runner = new TestRunner(
-    smStore,
-    new ConfigValue("concurrency", 0),
-    new ConfigValue("nodejsPath", "node"),
-    new ConfigValue("verbose", false),
-    new ConfigValue("style", Style.Spec),
-    context.extensionUri.fsPath,
-    new ConfigValue("nodejsParameters", []),
-    new ConfigValue("envFile", ""),
-    new ConfigValue("env", {}),
-    extensions,
-  );
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
@@ -48,6 +36,20 @@ export async function activate(context: vscode.ExtensionContext) {
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
       if (!ctrls.has(folder)) {
+        const runner = new TestRunner(
+          smStore,
+          new ConfigValue("concurrency", 0, folder),
+          new ConfigValue("nodejsPath", "node", folder),
+          new ConfigValue("verbose", false, folder),
+          new ConfigValue("style", Style.Spec, folder),
+          context.extensionUri.fsPath,
+          new ConfigValue("nodejsParameters", [], folder),
+          new ConfigValue("envFile", "", folder),
+          new ConfigValue("env", {}, folder),
+          extensions,
+          new Pretest(new ConfigValue("pretest", undefined, folder)),
+        );
+
         ctrls.set(
           folder,
           new Controller(

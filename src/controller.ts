@@ -76,6 +76,7 @@ export class Controller {
     extensionConfigs: ExtensionConfig[],
   ) {
     this.disposable.add(ctrl);
+    this.disposable.add(runner);
     const extensions = extensionConfigs.flatMap((x) => x.extensions);
 
     const relativeInclude = include

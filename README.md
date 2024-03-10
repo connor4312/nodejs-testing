@@ -21,6 +21,7 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
 - `nodejs-testing.exclude` is the list of glob patterns that should be excluded from the search. Defaults to `['**/node_modules/**']`.
 - `nodejs-testing.concurrency` is how many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.
 - `nodejs-testing.nodejsPath` is the path to the Node.js binary to use for running tests. If unset, will try to find Node on your PATH.
+- `nodejs-testing.pretest` is a command to execute before tests are run. For example `["npm", "run", "pretest"]`. The working directory for the script is the workspace folder.
 - `nodejs-testing.extensions` is a list of test extensions to search for, and optional additional Node.js parameters to pass when running those test files. It defaults to
 
   ```json
