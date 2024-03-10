@@ -168,6 +168,25 @@ export class TestRunner {
                   onLog(test, prefix, log);
                 },
 
+                fileFailed({ uri, error }) {
+                  // File failures call all tests in a URI to fail. Either mark
+                  // all those include (if any) or just get the root tests for
+                  // that file, if running all tests.
+                  let tests = request.include?.filter((t) => t.uri?.toString() === uri);
+                  if (!tests?.length) {
+                    let byUri = getTestByPath([uri]);
+                    if (!byUri) return;
+                    tests = [byUri];
+                  }
+
+                  const message = new vscode.TestMessage(error);
+                  outputQueue.enqueue(undefined, () => {
+                    for (const test of tests) {
+                      run.failed(test, message);
+                    }
+                  });
+                },
+
                 failed({ id, duration, actual, expected, error, stack }) {
                   const test = getTestByPath(id);
                   if (!test) {

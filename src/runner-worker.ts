@@ -111,8 +111,14 @@ async function doWork(
       const setId = (id: string[], data: { nesting: number; name: string }) => {
         id.length = data.nesting + 2;
         id[data.nesting + 1] = data.name;
+        linesThatWillCauseFileToFail = undefined;
       };
       let inspector: WebSocket | undefined;
+
+      // Set to an array until the first test reports its status. If the process
+      // exits before that happens, it's probably because of some syntax error
+      // and these lines will be reported as the failure.
+      let linesThatWillCauseFileToFail: string[] | undefined = [];
 
       const handleLine = (line: string) => {
         if (verbose) {
@@ -124,8 +130,11 @@ async function doWork(
           json = JSON.parse(line);
         } catch {
           server.output(`${prefix}${line}`);
+          linesThatWillCauseFileToFail?.push(line);
           return;
         }
+
+        linesThatWillCauseFileToFail = undefined;
 
         switch (json.type) {
           case "runner:log":
@@ -191,6 +200,12 @@ async function doWork(
         .on("end", () => {
           if (verbose) {
             server.output(`${prefix}stdout closed`);
+          }
+          if (linesThatWillCauseFileToFail) {
+            server.fileFailed({
+              uri: next.uri,
+              error: linesThatWillCauseFileToFail.join("\n"),
+            });
           }
           resolve();
         })

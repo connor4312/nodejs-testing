@@ -38,6 +38,12 @@ export const contract = makeContract({
         duration: s.optionalProp(s.sNumber()),
       }),
     }),
+    fileFailed: notificationType({
+      params: s.sObject({
+        uri: s.sString(),
+        error: s.sString(),
+      }),
+    }),
     failed: notificationType({
       params: s.sObject({
         id: s.sArrayOf(s.sString()),
