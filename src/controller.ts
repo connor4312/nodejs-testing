@@ -26,7 +26,7 @@ function jsExtensions(extensions: string[]) {
 }
 
 /** @see https://nodejs.org/api/test.html#test-runner-execution-model */
-function testPatterns(extensions: string[]) {
+function defaultFilePatterns(extensions: string[]) {
   return [
     `**/{test,test-*,*.test,*-test,*_test}${jsExtensions(extensions)}`,
     `**/test/**/*${jsExtensions(extensions)}`,
@@ -76,6 +76,7 @@ export class Controller {
     extensionConfigs: ExtensionConfig[],
   ) {
     this.disposable.add(ctrl);
+    this.disposable.add(runner);
     const extensions = extensionConfigs.flatMap((x) => x.extensions);
 
     const relativeInclude = include
@@ -89,9 +90,9 @@ export class Controller {
 
     this.includeTest = picomatch(
       relativeInclude.flatMap((i) =>
-        testPatterns(extensions).map(
-          (tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`,
-        ),
+        extensionConfigs
+          .flatMap((x): string[] => x.filePatterns || defaultFilePatterns(x.extensions))
+          .map((tp) => `${forceForwardSlashes(path.resolve(wf.uri.fsPath, i))}/${tp}`),
       ),
       {
         ignore: exclude.map((e) => {

@@ -2,18 +2,22 @@ import { replaceVariables } from "@c4312/vscode-variables";
 import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
 import { spawn } from "child_process";
-import { promises as fs } from "fs";
+import { parse as parseEnv } from "dotenv";
+import fs from "fs/promises";
 import { createServer } from "net";
 import { cpus, tmpdir } from "os";
 import { join } from "path";
 import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
+import { DisposableStore } from "./disposable";
 import { last } from "./iterable";
 import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { OutputQueue } from "./outputQueue";
-import { CompleteStatus, ILog, ITestRunFile, Result, contract } from "./runner-protocol";
+import { Pretest } from "./pretest";
+import { CompleteStatus, ILog, ITestRunFile, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
+import { Style, styleFactories } from "./styles";
 import { convertAnsiTextToHtml, doesTextContainAnsiCodes } from "./ansi-converter";
 
 let socketCounter = 0;
@@ -25,18 +29,37 @@ export type RunHandler = (
   token: vscode.CancellationToken,
 ) => Promise<void>;
 
-export class TestRunner {
+export class TestRunner implements vscode.Disposable {
   private readonly workerPath: string;
+  private readonly disposables = new DisposableStore();
 
   constructor(
     private readonly smStore: SourceMapStore,
     private readonly concurrency: ConfigValue<number>,
     private readonly nodejsPath: ConfigValue<string>,
+    private readonly verbose: ConfigValue<boolean>,
+    private readonly style: ConfigValue<Style>,
     extensionDir: string,
     private readonly nodejsParameters: ConfigValue<string[]>,
+    private readonly envFile: ConfigValue<string>,
+    private readonly env: ConfigValue<Record<string, string>>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
+    private readonly pretest: Pretest,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
+    this.disposables.add(concurrency);
+    this.disposables.add(nodejsPath);
+    this.disposables.add(verbose);
+    this.disposables.add(style);
+    this.disposables.add(nodejsParameters);
+    this.disposables.add(envFile);
+    this.disposables.add(env);
+    this.disposables.add(extensions);
+    this.disposables.add(pretest);
+  }
+
+  public dispose() {
+    this.disposables.dispose();
   }
 
   public makeHandler(
@@ -45,13 +68,21 @@ export class TestRunner {
     debug: boolean,
   ): RunHandler {
     return async (request, token) => {
-      const files = await this.solveArguments(ctrl, request);
+      const run = ctrl.createTestRun(request);
+      if (!(await this.pretest.run(wf.uri.fsPath, run, token))) {
+        run.end();
+        return;
+      }
+
       if (token.isCancellationRequested) {
         return;
       }
 
+      const files = await this.solveArguments(ctrl, request);
+      if (token.isCancellationRequested) {
+        return;
+      }
       const concurrency = this.concurrency.value || cpus().length;
-      const run = ctrl.createTestRun(request);
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
         const uri = vscode.Uri.parse(path[0]);
         let item = last(getContainingItemsForFile(wf, ctrl, uri))!.item;
@@ -70,6 +101,7 @@ export class TestRunner {
       // and possibly the only ones presents from transpiled code.
       const inlineSourceMaps = new Map<string, string>();
       const smStore = this.smStore.createScoped();
+      const style = styleFactories[this.style.value]();
       const mapLocation = async (path: string, line: number | null, col: number | null) => {
         // stacktraces can have file URIs on some platforms (#7)
         const fileUri = path.startsWith("file:") ? vscode.Uri.parse(path) : vscode.Uri.file(path);
@@ -81,18 +113,39 @@ export class TestRunner {
 
       try {
         const outputQueue = new OutputQueue();
+
+        const extensions = this.extensions.value;
+        const envFile = this.envFile.value
+          ? await fs.readFile(replaceVariables(this.envFile.value))
+          : null;
+        const envFileValues = envFile ? parseEnv(envFile) : {};
+        const extraEnv = {
+          ...envFileValues,
+          ...this.env.value,
+        };
+
         await new Promise<void>((resolve, reject) => {
           const socket = getRandomPipe();
-          run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => { }));
+          run.token.onCancellationRequested(() => fs.unlink(socket).catch(() => {}));
 
           const server = createServer((stream) => {
             run.token.onCancellationRequested(stream.end, stream);
-            const extensions = this.extensions.value;
 
             const onLog = (test: vscode.TestItem | undefined, prefix: string, log: ILog) => {
-              const location = log.sf.file
-                ? mapLocation(log.sf.file, log.sf.lineNumber, log.sf.column)
+              const location = log.sf?.file
+                ? mapLocation(log.sf.file, log.sf.lineNumber, log.sf.column).then(
+                    (r) => {
+                      return r;
+                    },
+                    (err) => {
+                      run.appendOutput(
+                        `Error while mapping location from ${log.sf!.file}, please report: ${err}`,
+                      );
+                      return undefined;
+                    },
+                  )
                 : undefined;
+
               outputQueue.enqueue(location, (location) => {
                 run.appendOutput(prefix);
                 run.appendOutput(log.chunk.replace(/\r?\n/g, "\r\n"), location, test);
@@ -108,6 +161,23 @@ export class TestRunner {
                   const test = getTestByPath(id);
                   if (test) {
                     run.started(test);
+                    outputQueue.enqueue(() => run.appendOutput(style.started(test)));
+                  }
+                },
+
+                skipped({ id }) {
+                  const test = getTestByPath(id);
+                  if (test) {
+                    run.skipped(test);
+                    outputQueue.enqueue(() => run.appendOutput(style.skipped(test)));
+                  }
+                },
+
+                passed({ id, duration }) {
+                  const test = getTestByPath(id);
+                  if (test) {
+                    run.passed(test, duration);
+                    outputQueue.enqueue(() => run.appendOutput(style.passed(test)));
                   }
                 },
 
@@ -124,55 +194,54 @@ export class TestRunner {
                   onLog(test, prefix, log);
                 },
 
-                finished({
-                  id,
-                  status,
-                  duration,
-                  actual,
-                  expected,
-                  error,
-                  stack,
-                  logs,
-                  logPrefix,
-                }) {
+                fileFailed({ uri, error }) {
+                  // File failures call all tests in a URI to fail. Either mark
+                  // all those include (if any) or just get the root tests for
+                  // that file, if running all tests.
+                  let tests = request.include?.filter((t) => t.uri?.toString() === uri);
+                  if (!tests?.length) {
+                    let byUri = getTestByPath([uri]);
+                    if (!byUri) return;
+                    tests = [byUri];
+                  }
+
+                  const message = new vscode.TestMessage(error);
+                  outputQueue.enqueue(undefined, () => {
+                    for (const test of tests) {
+                      run.failed(test, message);
+                    }
+                  });
+                },
+
+                failed({ id, duration, actual, expected, error, stack }) {
                   const test = getTestByPath(id);
                   if (!test) {
                     return;
                   }
 
-                  for (const l of logs) {
-                    onLog(test, logPrefix, l);
+                  const asText = error || "Test failed";
+                  let testMessage: vscode.TestMessage;
+
+                  if (actual !== undefined && expected !== undefined) {
+                    testMessage = vscode.TestMessage.diff(asText, expected, actual);
+                  } else if (doesTextContainAnsiCodes(asText)) {
+                    const markdownString = new vscode.MarkdownString();
+                    markdownString.supportHtml = true;
+                    markdownString.isTrusted = true;
+                    markdownString.appendMarkdown(convertAnsiTextToHtml(asText));
+                    testMessage = new vscode.TestMessage(markdownString);
+                  } else {
+                    testMessage = new vscode.TestMessage(asText);
                   }
-
-                  if (status === Result.Failed) {
-                    const asText = error || "Test failed";
-
-                    let testMessage: vscode.TestMessage;
-
-                    if (actual !== undefined && expected !== undefined) {
-                      testMessage = vscode.TestMessage.diff(asText, expected, actual);
-                    } else if (doesTextContainAnsiCodes(asText)) {
-                      const markdownString = new vscode.MarkdownString();
-                      markdownString.supportHtml = true;
-                      markdownString.isTrusted = true;
-                      markdownString.appendMarkdown(convertAnsiTextToHtml(asText));
-                      testMessage = new vscode.TestMessage(markdownString);
-                    } else {
-                      testMessage = new vscode.TestMessage(asText);
-                    }
-                    const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
-                    const location = lastFrame?.file
-                      ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
-                      : undefined;
-                    outputQueue.enqueue(location, (location) => {
-                      testMessage.location = location;
-                      run.failed(test, testMessage);
-                    });
-                  } else if (status === Result.Skipped) {
-                    outputQueue.enqueue(() => run.skipped(test));
-                  } else if (status === Result.Ok) {
-                    outputQueue.enqueue(() => run.passed(test, duration));
-                  }
+                  const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
+                  const location = lastFrame?.file
+                    ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
+                    : undefined;
+                  outputQueue.enqueue(location, (location) => {
+                    run.appendOutput(style.failed(test, asText));
+                    testMessage.location = location;
+                    run.failed(test, testMessage, duration);
+                  });
                 },
               },
             );
@@ -182,10 +251,13 @@ export class TestRunner {
                 files,
                 concurrency,
                 extensions,
+                verbose: this.verbose.value,
+                extraEnv,
               })
               .then(({ status, message }) => {
                 switch (status) {
                   case CompleteStatus.Done:
+                    outputQueue.enqueue(() => run.appendOutput(style.done()));
                     return resolve(outputQueue.drain());
                   case CompleteStatus.NodeVersionOutdated:
                     return reject(

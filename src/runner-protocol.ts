@@ -4,6 +4,8 @@ import {
   requestType,
   semanticJson as s,
 } from "@hediet/json-rpc";
+import { TestEvent } from "node:test/reporters";
+import { StackFrame } from "stacktrace-parser";
 
 const stackFrame = s.sObject({
   file: s.sUnion([s.sString(), s.sNull()]),
@@ -13,7 +15,7 @@ const stackFrame = s.sObject({
 
 const log = s.sObject({
   chunk: s.sString(),
-  sf: stackFrame,
+  sf: s.optionalProp(stackFrame),
 });
 
 export const contract = makeContract({
@@ -23,6 +25,33 @@ export const contract = makeContract({
     started: notificationType({
       params: s.sObject({
         id: s.sArrayOf(s.sString()),
+      }),
+    }),
+    skipped: notificationType({
+      params: s.sObject({
+        id: s.sArrayOf(s.sString()),
+      }),
+    }),
+    passed: notificationType({
+      params: s.sObject({
+        id: s.sArrayOf(s.sString()),
+        duration: s.optionalProp(s.sNumber()),
+      }),
+    }),
+    fileFailed: notificationType({
+      params: s.sObject({
+        uri: s.sString(),
+        error: s.sString(),
+      }),
+    }),
+    failed: notificationType({
+      params: s.sObject({
+        id: s.sArrayOf(s.sString()),
+        duration: s.optionalProp(s.sNumber()),
+        expected: s.optionalProp(s.sString()),
+        actual: s.optionalProp(s.sString()),
+        error: s.optionalProp(s.sString()),
+        stack: s.optionalProp(s.sArrayOf(stackFrame)),
       }),
     }),
     output: notificationType({
@@ -41,25 +70,13 @@ export const contract = makeContract({
         log,
       }),
     }),
-    finished: notificationType({
-      params: s.sObject({
-        id: s.sArrayOf(s.sString()),
-        status: s.sNumber(),
-        duration: s.optionalProp(s.sNumber()),
-        expected: s.optionalProp(s.sString()),
-        actual: s.optionalProp(s.sString()),
-        error: s.optionalProp(s.sString()),
-        stack: s.optionalProp(s.sArrayOf(stackFrame)),
-        logs: s.sArrayOf(log),
-        logPrefix: s.sString(),
-      }),
-    }),
   },
   // the interface for servers to interact with clients
   client: {
     kill: notificationType({}),
     start: requestType({
       params: s.sObject({
+        verbose: s.sBoolean(),
         concurrency: s.sNumber(),
         files: s.sArrayOf(
           s.sObject({
@@ -81,6 +98,7 @@ export const contract = makeContract({
             parameters: s.sArrayOf(s.sString()),
           }),
         ),
+        extraEnv: s.sMap(s.sString()),
       }),
       result: s.sObject({
         status: s.sNumber(),
@@ -109,3 +127,5 @@ export const enum Result {
   Skipped,
   Failed,
 }
+
+export type JsonFromReporter = TestEvent | { type: "runner:log"; chunk: string; sf?: StackFrame };

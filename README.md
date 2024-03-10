@@ -6,7 +6,7 @@ Provide integration with VS Code using the [`node:test` runner](https://nodejs.o
 
 ## Having Problems? Read this!
 
-- The extension looks for files that use the [Node.js test runner naming convention](https://nodejs.org/api/test.html#test-runner-execution-model). Make sure your files are named correctly!
+- The extension looks for files that use the [Node.js test runner naming convention](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line). Make sure your files are named correctly!
 
 - The Node.js test runner only supports running JavaScript files. If you have a compilation step, you'll need to make sure that runs **with sourcemaps** so we can figure out where tests appear in your source code. For example, for TypeScript, set `"sourceMap": true` in your tsconfig.json.
 
@@ -21,6 +21,7 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
 - `nodejs-testing.exclude` is the list of glob patterns that should be excluded from the search. Defaults to `['**/node_modules/**']`.
 - `nodejs-testing.concurrency` is how many test files to run in parallel. Setting it to 0 (default) will use the number of CPU cores - 1.
 - `nodejs-testing.nodejsPath` is the path to the Node.js binary to use for running tests. If unset, will try to find Node on your PATH.
+- `nodejs-testing.pretest` is a command to execute before tests are run. For example `["npm", "run", "pretest"]`. The working directory for the script is the workspace folder.
 - `nodejs-testing.extensions` is a list of test extensions to search for, and optional additional Node.js parameters to pass when running those test files. It defaults to
 
   ```json
@@ -43,10 +44,12 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
       },
       {
         "extensions": ["mts", "cts", "ts"],
-        "parameters": ["--loader", "tsx"]
+        "parameters": ["--import", "tsx"]
       }
     ]
   }
   ```
 
   You can also import other helpers by adding parameters like `["--import", "${workspaceFolder}/path/to/file.js"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.
+
+  Finally, in _addition to_ an `extensions` option, you can inspect specify a `filePattern` option if you want to name your files differently than the default [naming scheme](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line).

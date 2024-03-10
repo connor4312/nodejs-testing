@@ -62,6 +62,7 @@ it("runs tests", async () => {
   const run = await captureTestRun(c, new vscode.TestRunRequest());
 
   run.expectStates({
+    "src/example.test.ts/math": ["started", "failed"],
     "src/example.test.ts/math/addition": ["started", "passed"],
     "src/example.test.ts/math/subtraction": ["started", "failed"],
   });

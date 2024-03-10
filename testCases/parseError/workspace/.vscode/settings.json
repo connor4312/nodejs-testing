@@ -1,0 +1,10 @@
+{
+  "nodejs-testing.verbose": true,
+  "nodejs-testing.extensions": [
+    {
+      "extensions": ["js", "mjs", "cjs"],
+      "filePatterns": ["**/*.spec.mjs"],
+      "parameters": []
+    }
+  ]
+}

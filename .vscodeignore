@@ -13,3 +13,5 @@ out/test/**
 testCases/**
 .esbuild.js
 .nvmrc
+.github
+screenshot.png

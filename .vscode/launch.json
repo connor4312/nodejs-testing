@@ -11,7 +11,8 @@
       "description": "Integration test to run",
       "options": [
         "simple",
-        "sourcemapped"
+        "sourcemapped",
+        "modules"
         // add more test names here as needed
       ]
     }
@@ -21,12 +22,23 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/testCases/simple/workspace"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/testCases/simple/workspace"
+      ],
       "trace": {
         "logFile": "/mnt/c/Users/conno/Downloads/log.txt"
       },
-      // "autoAttachChildProcesses": true,
+      "autoAttachChildProcesses": false,
       "outFiles": ["${workspaceFolder}/out/**/*.js"]
+    },
+    {
+      "name": "Run Unit Tests",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/vitest",
+      "args": ["--run"],
+      "console": "integratedTerminal"
     },
     {
       "name": "Run Integration Tests",

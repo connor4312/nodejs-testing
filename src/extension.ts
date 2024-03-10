@@ -1,8 +1,10 @@
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
+import { Pretest } from "./pretest";
 import { TestRunner } from "./runner";
 import { SourceMapStore } from "./source-map-store";
+import { Style } from "./styles";
 
 export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
@@ -15,15 +17,6 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   ]);
 
-  const runner = new TestRunner(
-    smStore,
-    new ConfigValue("concurrency", 0),
-    new ConfigValue("nodejsPath", "node"),
-    context.extensionUri.fsPath,
-    new ConfigValue("nodejsParameters", []),
-    extensions,
-  );
-
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
     for (const ctrl of ctrls.values()) {
@@ -35,13 +28,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const syncWorkspaceFolders = () => {
     if (!extensions.value?.length) {
-      const msg = "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
+      const msg =
+        "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
       vscode.window.showErrorMessage(msg);
       return;
     }
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
       if (!ctrls.has(folder)) {
+        const runner = new TestRunner(
+          smStore,
+          new ConfigValue("concurrency", 0, folder),
+          new ConfigValue("nodejsPath", "node", folder),
+          new ConfigValue("verbose", false, folder),
+          new ConfigValue("style", Style.Spec, folder),
+          context.extensionUri.fsPath,
+          new ConfigValue("nodejsParameters", [], folder),
+          new ConfigValue("envFile", "", folder),
+          new ConfigValue("env", {}, folder),
+          extensions,
+          new Pretest(new ConfigValue("pretest", undefined, folder)),
+        );
+
         ctrls.set(
           folder,
           new Controller(
@@ -108,4 +116,4 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() { }
+export function deactivate() {}
