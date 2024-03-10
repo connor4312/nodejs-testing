@@ -6,7 +6,7 @@ Provide integration with VS Code using the [`node:test` runner](https://nodejs.o
 
 ## Having Problems? Read this!
 
-- The extension looks for files that use the [Node.js test runner naming convention](https://nodejs.org/api/test.html#test-runner-execution-model). Make sure your files are named correctly!
+- The extension looks for files that use the [Node.js test runner naming convention](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line). Make sure your files are named correctly!
 
 - The Node.js test runner only supports running JavaScript files. If you have a compilation step, you'll need to make sure that runs **with sourcemaps** so we can figure out where tests appear in your source code. For example, for TypeScript, set `"sourceMap": true` in your tsconfig.json.
 
@@ -50,3 +50,5 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
   ```
 
   You can also import other helpers by adding parameters like `["--import", "${workspaceFolder}/path/to/file.js"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.
+
+  Finally, in _addition to_ an `extensions` option, you can inspect specify a `filePattern` option if you want to name your files differently than the default [naming scheme](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line).

@@ -116,6 +116,13 @@
                     "type": "string"
                   }
                 },
+                "filePatterns": {
+                  "type": "array",
+                  "markdownDescription": "Glob pattern to match files. Defaults to the default [naming scheme](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line) of the Node.js test runner CLI. For example `[\"**/*.spec.ts\"]`.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "parameters": {
                   "type": "array",
                   "markdownDescription": "Additional parameters can be defined here, which are passed to the process, that executes the unit tests. For example [\"--loader\", \"tsx\"]",
