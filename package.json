@@ -5,7 +5,7 @@
   "publisher": "connor4312",
   "version": "1.4.0",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.86.0"
   },
   "keywords": [
     "node",
@@ -174,7 +174,7 @@
   "homepage": "https://github.com/connor4312/nodejs-testing#readme",
   "main": "./out/extension.js",
   "scripts": {
-    "package": "vsce package --no-dependencies",
+    "package": "npx -y @vscode/vsce package --no-dependencies",
     "vscode:prepublish": "node .esbuild.js --minify",
     "compile": "node .esbuild.js --minify",
     "watch": "node .esbuild.js --watch",
