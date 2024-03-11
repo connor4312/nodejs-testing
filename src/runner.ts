@@ -227,7 +227,6 @@ export class TestRunner implements vscode.Disposable {
                   } else if (doesTextContainAnsiCodes(asText)) {
                     const markdownString = new vscode.MarkdownString();
                     markdownString.supportHtml = true;
-                    markdownString.isTrusted = true;
                     markdownString.appendMarkdown(convertAnsiTextToHtml(asText));
                     testMessage = new vscode.TestMessage(markdownString);
                   } else {

@@ -11,6 +11,32 @@ const colorNameAsBright = {
   'cyan': 'lightCyan',
   'black': 'darkGray',
   'lightGray': 'white'
+};
+
+const colorNameToCSSVariableName = {
+  black: '--vscode-terminal-ansiBlack',
+  darkGray: '--vscode-terminal-ansiBrightBlack',
+
+  blue: '--vscode-terminal-ansiBlue',
+  lightBlue: '--vscode-terminal-ansiBrightBlue',
+
+  cyan: '--vscode-terminal-ansiCyan',
+  lightCyan: '--vscode-terminal-ansiBrightCyan',
+
+  green: '--vscode-terminal-ansiGreen',
+  lightGreen: '--vscode-terminal-ansiBrightGreen',
+
+  red: '--vscode-terminal-ansiRed',
+  lightRed: '--vscode-terminal-ansiBrightRed',
+
+  yellow: '--vscode-terminal-ansiYellow',
+  lightYellow: '--vscode-terminal-ansiBrightYellow',
+
+  magenta: '--vscode-terminal-ansiMagenta',
+  lightMagenta: '--vscode-terminal-ansiBrightMagenta',
+
+  white: '--vscode-terminal-ansiWhite',
+  lightGray: '--vscode-terminal-ansiBrightWhite',
 }
 
 export function doesTextContainAnsiCodes(text: string): boolean {
@@ -21,7 +47,8 @@ export function convertAnsiTextToHtml(text: string): string {
   const parsed = parse(text).spans;
 
   // According to VS Code source code, only span supports style
-  // https://github.com/microsoft/vscode/blob/6d2920473c6f13759c978dd89104c4270a83422d/src/vs/base/browser/markdownRenderer.ts#L301
+  // https://github.com/microsoft/vscode/blob/0db502e1320287333c65a17c5944a2cdcf5218fc/src/vs/base/browser/markdownRenderer.ts#L382
+  // TODO - escape html
   const html = parsed.map((span) => `<span style="${getSupportedCSSFromAnsiSpan(span)}">${span.text.replaceAll('\n', '<br/>')}</span>`).join("");
 
   return html;
@@ -30,13 +57,12 @@ export function convertAnsiTextToHtml(text: string): string {
 function getSupportedCSSFromAnsiSpan(span: ParsedSpan): string {
   // According to VS Code source code:
   // 1. span only support color and background-color in style
-  // 2. colors must be in hex format
-  // 3. color must be first and than the background-color
-  // 4. there must be a semicolon at the end
-  // 5. color and background-color are optional
-  // 6. must be no spaces
+  // 2. color must be first and than the background-color
+  // 3. there must be a semicolon at the end
+  // 4. color and background-color are optional
+  // 5. must be no spaces
   //
-  // Source: https://github.com/microsoft/vscode/blob/6d2920473c6f13759c978dd89104c4270a83422d/src/vs/base/browser/markdownRenderer.ts#L309
+  // Source: https://github.com/microsoft/vscode/blob/0db502e1320287333c65a17c5944a2cdcf5218fc/src/vs/base/browser/markdownRenderer.ts#L382
 
   const css: string[] = [];
 
@@ -62,6 +88,7 @@ function getSupportedCSSFromAnsiSpan(span: ParsedSpan): string {
 function getColor(color: ParsedColor, type: 'color' | 'background', hasBackground: boolean): string | undefined {
   const isLightTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrastLight;
 
+  // TODO - check again when this happens
   if (!color.name) {
     const shouldHaveHalfTransparentText = color.dim && (type === 'background' || (type === 'color' && !hasBackground));
 
@@ -71,23 +98,7 @@ function getColor(color: ParsedColor, type: 'color' | 'background', hasBackgroun
 
   const colorName = color.bright ? colorNameAsBright[color.name as keyof typeof colorNameAsBright] : color.name;
 
-  const rgb = AnsiColorsParser.rgb[colorName as keyof typeof AnsiColorsParser.rgb];
-
-  const alphaPartInHex = color.dim ? '80' : 'FF';
-
-  let hexColor: string;
-
-  // Modify the common colors to be nicer
-  // TODO - should somehow support the theme colors
-  if (colorName === 'red') {
-    hexColor = '#FF474D';
-  } else if (colorName === 'green') {
-    hexColor = '#3CC173';
-  } else {
-    hexColor = rgbToHex(rgb[0], rgb[1], rgb[2]);
-  }
-
-  return `${hexColor}${alphaPartInHex}`;
+  return `var(${colorNameToCSSVariableName[colorName as keyof typeof colorNameToCSSVariableName]})`;
 }
 
 function componentToHex(c: number): string {
