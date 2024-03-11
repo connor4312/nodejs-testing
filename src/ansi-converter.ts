@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import AnsiColorsParser, { ParsedColor, ParsedSpan, parse } from "ansicolor";
+import {encode} from 'html-entities';
 
 // taken from the ansicolor source code
 const colorNameAsBright = {
@@ -48,10 +49,10 @@ export function convertAnsiTextToHtml(text: string): string {
 
   // According to VS Code source code, only span supports style
   // https://github.com/microsoft/vscode/blob/0db502e1320287333c65a17c5944a2cdcf5218fc/src/vs/base/browser/markdownRenderer.ts#L382
-  // TODO - escape html
-  const html = parsed.map((span) => `<span style="${getSupportedCSSFromAnsiSpan(span)}">${span.text.replaceAll('\n', '<br/>')}</span>`).join("");
+  // TODO - add test that html is escaped
+  const html = parsed.map((span) => `<span style="${getSupportedCSSFromAnsiSpan(span)}">${encode(span.text)}</span>`).join("");
 
-  return html;
+  return `<pre>${html}</pre>`;
 }
 
 function getSupportedCSSFromAnsiSpan(span: ParsedSpan): string {
@@ -99,13 +100,4 @@ function getColor(color: ParsedColor, type: 'color' | 'background', hasBackgroun
   const colorName = color.bright ? colorNameAsBright[color.name as keyof typeof colorNameAsBright] : color.name;
 
   return `var(${colorNameToCSSVariableName[colorName as keyof typeof colorNameToCSSVariableName]})`;
-}
-
-function componentToHex(c: number): string {
-  var hex = c.toString(16);
-  return hex.length == 1 ? "0" + hex : hex;
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
 }
