@@ -78,6 +78,7 @@ export const contract = makeContract({
       params: s.sObject({
         verbose: s.sBoolean(),
         concurrency: s.sNumber(),
+        coverageDir: s.optionalProp(s.sString()),
         files: s.sArrayOf(
           s.sObject({
             // VS Code URI of the file to associate the test with. For sourcemaps,

@@ -1,20 +1,18 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "ES2021",
-		"outDir": "out",
-		"lib": [
-			"ES2021"
-		],
-		"types": ["node"],
-		"sourceMap": true,
-		"skipLibCheck": true,
-		"strict": true,   /* enable all strict type-checking options */
-		"esModuleInterop": true,
-		/* Additional Checks */
-		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
-	},
-	"include": ["src"]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "outDir": "out",
+    "lib": ["ES2021"],
+    "types": ["node"],
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "strict": true /* enable all strict type-checking options */,
+    "esModuleInterop": true
+    /* Additional Checks */
+    // "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
+    // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
+    // "noUnusedParameters": true,  /* Report errors on unused parameters. */
+  },
+  "include": ["src"]
 }

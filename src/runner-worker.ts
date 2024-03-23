@@ -43,6 +43,7 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   extensions,
   verbose,
   extraEnv,
+  coverageDir,
 }) => {
   const majorVersion = /^v([0-9]+)/.exec(process.version);
   if (!majorVersion || Number(majorVersion[1]) < 19) {
@@ -52,7 +53,7 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   const todo: Promise<void>[] = [];
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
-    todo.push(doWork(prefix, files, extensions, verbose, extraEnv));
+    todo.push(doWork(prefix, files, extensions, verbose, extraEnv, coverageDir));
   }
   await Promise.all(todo);
 
@@ -65,6 +66,7 @@ async function doWork(
   extensions: ExtensionConfig[],
   verbose: boolean,
   extraEnv: Record<string, string>,
+  coverageDir: string | undefined,
 ) {
   while (queue.length) {
     const next = queue.pop()!;
@@ -97,6 +99,7 @@ async function doWork(
         env: {
           // enable color for modules that use `supports-color` or similar
           FORCE_COLOR: "true",
+          NODE_V8_COVERAGE: coverageDir,
           ...process.env,
           ...extraEnv,
         },

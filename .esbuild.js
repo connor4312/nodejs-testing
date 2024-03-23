@@ -18,11 +18,21 @@ const ctx = esbuild.context({
   minify,
   platform: "node",
   outdir: "out",
+  plugins: [
+    {
+      name: "alias-module",
+      setup: (build) => {
+        build.onResolve({ filter: /^istanbul-reports$/ }, () => ({
+          path: `${__dirname}/src/istanbul-reports-stub.ts`,
+        }));
+      },
+    },
+  ],
 });
 
 ctx
   .then((ctx) => (watch ? ctx.watch() : ctx.rebuild()))
   .then(
     () => !watch && process.exit(0),
-    () => process.exit(1)
+    () => process.exit(1),
   );

@@ -3,6 +3,7 @@ import { promises as fs, statSync } from "fs";
 import * as path from "path";
 import picomatch from "picomatch";
 import * as vscode from "vscode";
+import { coverageContext } from "./coverage";
 import { DisposableStore, MutableDisposable } from "./disposable";
 import { last } from "./iterable";
 import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
@@ -65,6 +66,8 @@ export class Controller {
   public readonly runHandler: RunHandler;
   /** Handler for a test debug run */
   public readonly debugHandler: RunHandler;
+  /** Handler for a test coverage run */
+  public readonly coverageHandler: RunHandler;
 
   constructor(
     public readonly ctrl: vscode.TestController,
@@ -114,12 +117,21 @@ export class Controller {
     );
 
     ctrl.resolveHandler = this.resolveHandler();
-    this.runHandler = runner.makeHandler(wf, ctrl, false);
-    this.debugHandler = runner.makeHandler(wf, ctrl, true);
+    this.runHandler = runner.makeHandler(wf, ctrl, false, false);
+    this.debugHandler = runner.makeHandler(wf, ctrl, true, false);
+    this.coverageHandler = runner.makeHandler(wf, ctrl, false, true);
 
     ctrl.refreshHandler = () => this.scanFiles();
     ctrl.createRunProfile("Run", vscode.TestRunProfileKind.Run, this.runHandler, true);
     ctrl.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, this.debugHandler, true);
+
+    const coverageProfile = ctrl.createRunProfile(
+      "Coverage",
+      vscode.TestRunProfileKind.Coverage,
+      this.coverageHandler,
+      true,
+    );
+    coverageProfile.loadDetailedCoverage = coverageContext.loadDetailedCoverage;
   }
 
   public dispose() {

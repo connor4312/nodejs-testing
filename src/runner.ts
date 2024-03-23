@@ -2,6 +2,7 @@ import { replaceVariables } from "@c4312/vscode-variables";
 import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
 import { spawn } from "child_process";
+import { randomUUID } from "crypto";
 import { parse as parseEnv } from "dotenv";
 import fs from "fs/promises";
 import { createServer } from "net";
@@ -10,6 +11,7 @@ import { join } from "path";
 import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
+import { applyC8Coverage } from "./coverage";
 import { DisposableStore } from "./disposable";
 import { last } from "./iterable";
 import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
@@ -65,6 +67,7 @@ export class TestRunner implements vscode.Disposable {
     wf: vscode.WorkspaceFolder,
     ctrl: vscode.TestController,
     debug: boolean,
+    coverage: boolean,
   ): RunHandler {
     return async (request, token) => {
       const run = ctrl.createTestRun(request);
@@ -112,7 +115,9 @@ export class TestRunner implements vscode.Disposable {
 
       try {
         const outputQueue = new OutputQueue();
-
+        const coverageDir = coverage
+          ? join(tmpdir(), `nodejs-coverage-${randomUUID()}`)
+          : undefined;
         const extensions = this.extensions.value;
         const envFile = this.envFile.value
           ? await fs.readFile(replaceVariables(this.envFile.value))
@@ -243,6 +248,7 @@ export class TestRunner implements vscode.Disposable {
                 extensions,
                 verbose: this.verbose.value,
                 extraEnv,
+                coverageDir,
               })
               .then(({ status, message }) => {
                 switch (status) {
@@ -272,6 +278,10 @@ export class TestRunner implements vscode.Disposable {
             reject,
           );
         });
+
+        if (coverageDir) {
+          await applyC8Coverage(run, coverageDir, wf.uri.fsPath);
+        }
       } catch (e) {
         if (!token.isCancellationRequested) {
           vscode.window.showErrorMessage((e as Error).message);
