@@ -27,8 +27,8 @@
         "properties": {
           "nodejs-testing.nodejsPath": {
             "type": "string",
-            "default": "node",
-            "description": "Path to the Node.js binary used to run tests"
+            "default": null,
+            "description": "Path to the Node.js binary used to run tests (default is the one on the PATH in the workspace directory)."
           },
           "nodejs-testing.nodejsParameters": {
             "type": "array",
