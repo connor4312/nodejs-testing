@@ -39,14 +39,14 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!ctrls.has(folder)) {
 
         const nodeJsPath = await findNode(folder.uri.fsPath).catch((e) => {
-          vscode.window.showErrorMessage('nodejs-testing failed to find node path: ' + e.message);
+          vscode.window.showErrorMessage("nodejs-testing failed to find node path: " + e.message);
           return 'node';
         });
 
         const runner = new TestRunner(
           smStore,
           new ConfigValue("concurrency", 0, folder),
-          new ConfigValue("nodejsPath", nodeJsPath || 'node', folder),
+          new ConfigValue("nodejsPath", nodeJsPath || "node", folder),
           new ConfigValue("verbose", false, folder),
           new ConfigValue("style", Style.Spec, folder),
           context.extensionUri.fsPath,
