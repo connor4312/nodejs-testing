@@ -54,3 +54,23 @@ export function* getContainingItemsForFile(
     }
   }
 }
+
+export function getFullTestName(test: vscode.TestItem) {
+  let name = test.label;
+  while (test.parent && testMetadata.get(test.parent)?.type === ItemType.Test) {
+    test = test.parent;
+    name = `${test.label} ${name}`;
+  }
+
+  return name;
+}
+
+export function isParent(possibleParent: vscode.TestItem, possibleChild: vscode.TestItem) {
+  for (let t: vscode.TestItem | undefined = possibleChild; t; t = t.parent) {
+    if (t === possibleParent) {
+      return true;
+    }
+  }
+
+  return false;
+}

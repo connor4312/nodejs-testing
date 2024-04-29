@@ -6,6 +6,7 @@ import {
   captureTestRun,
   expectTestTree,
   getController,
+  getNodeVersion,
   onceChanged,
   saveAndRestoreWorkspace,
 } from "../../src/test/util";
@@ -141,13 +142,20 @@ it("runs subsets of tests", async () => {
     ]),
   );
 
-  run.expectStates({
-    "hello.test.js/math": ["started", "passed"],
-    "hello.test.js/math/addition": ["started", "passed"],
-    // note: skipped should work once nodejs/node#51577 is out
-    "hello.test.js/math/subtraction": ["started", "passed"],
-    // "hello.test.js/math/subtraction": ["started", "skipped"],
-  });
+  const nodeVersion = getNodeVersion();
+  if (nodeVersion < 22) {
+    run.expectStates({
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+      // did not work in earlier versions due to nodejs/node#51577
+      "hello.test.js/math/subtraction": ["started", "passed"],
+    });
+  } else {
+    run.expectStates({
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+    });
+  }
 });
 
 it("runs mixed test requests", async () => {
@@ -161,15 +169,24 @@ it("runs mixed test requests", async () => {
     ]),
   );
 
-  run.expectStates({
-    "test/inAFolder.js/addition": ["started", "passed"],
-    "hello.test.js/math": ["started", "passed"],
-    "hello.test.js/math/addition": ["started", "passed"],
-    // note: skipped should work once nodejs/node#51577 is out
-    "hello.test.js/math/subtraction": ["started", "passed"],
-    // "hello.test.js/math/subtraction": ["started", "skipped"],
-    "withADot.test.js/addition": ["started", "passed"],
-  });
+  const nodeVersion = getNodeVersion();
+  if (nodeVersion < 22) {
+    run.expectStates({
+      "test/inAFolder.js/addition": ["started", "passed"],
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+      // did not work in earlier versions due to nodejs/node#51577
+      "hello.test.js/math/subtraction": ["started", "passed"],
+      "withADot.test.js/addition": ["started", "passed"],
+    });
+  } else {
+    run.expectStates({
+      "test/inAFolder.js/addition": ["started", "passed"],
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+      "withADot.test.js/addition": ["started", "passed"],
+    });
+  }
 });
 
 it("handles test excludes", async () => {
@@ -182,13 +199,20 @@ it("handles test excludes", async () => {
     ),
   );
 
-  run.expectStates({
-    "hello.test.js/math": ["started", "passed"],
-    "hello.test.js/math/addition": ["started", "passed"],
-    // note: skipped should work once nodejs/node#51577 is out
-    "hello.test.js/math/subtraction": ["started", "passed"],
-    // "hello.test.js/math/subtraction": ["started", "skipped"],
-  });
+  const nodeVersion = getNodeVersion();
+  if (nodeVersion < 22) {
+    run.expectStates({
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+      // did not work in earlier versions due to nodejs/node#51577
+      "hello.test.js/math/subtraction": ["started", "passed"],
+    });
+  } else {
+    run.expectStates({
+      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math/addition": ["started", "passed"],
+    });
+  }
 });
 
 it("handles file and directory excludes", async () => {
@@ -225,18 +249,21 @@ it("shows test output", async () => {
   uri.toString();
   uri.fsPath;
 
-  assert.deepStrictEqual(run.output.filter(o => !!o.location), [
-    {
-      output: "some log\r\n",
-      location: new vscode.Location(uri, new vscode.Position(5, 13)),
-      test: undefined,
-    },
-    {
-      output: "another log",
-      location: new vscode.Location(uri, new vscode.Position(10, 20)),
-      test: undefined,
-    },
-  ]);
+  assert.deepStrictEqual(
+    run.output.filter((o) => !!o.location),
+    [
+      {
+        output: "some log\r\n",
+        location: new vscode.Location(uri, new vscode.Position(5, 13)),
+        test: undefined,
+      },
+      {
+        output: "another log",
+        location: new vscode.Location(uri, new vscode.Position(10, 20)),
+        test: undefined,
+      },
+    ],
+  );
 });
 
 describe("exclude/include settings", () => {

@@ -74,6 +74,10 @@ export const contract = makeContract({
   // the interface for servers to interact with clients
   client: {
     kill: notificationType({}),
+    version: requestType({
+      params: s.sNull(),
+      result: s.sString(),
+    }),
     start: requestType({
       params: s.sObject({
         verbose: s.sBoolean(),
@@ -101,10 +105,7 @@ export const contract = makeContract({
         ),
         extraEnv: s.sMap(s.sString()),
       }),
-      result: s.sObject({
-        status: s.sNumber(),
-        message: s.optionalProp(s.sString()),
-      }),
+      result: s.sNull(),
     }),
   },
 });
@@ -117,11 +118,6 @@ export type ITestRunFile =
 export type ITestRunResult = (typeof contract)["client"]["start"]["resultSerializer"]["T"];
 
 export type ILog = (typeof log)["T"];
-
-export const enum CompleteStatus {
-  Done,
-  NodeVersionOutdated,
-}
 
 export const enum Result {
   Ok,
