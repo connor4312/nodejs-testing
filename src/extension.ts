@@ -5,6 +5,7 @@ import { Pretest } from "./pretest";
 import { TestRunner } from "./runner";
 import { SourceMapStore } from "./source-map-store";
 import { Style } from "./styles";
+import { findNode } from "./find-node";
 
 export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
@@ -18,15 +19,15 @@ export async function activate(context: vscode.ExtensionContext) {
   ]);
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
-  const refreshFolders = () => {
+  const refreshFolders = async () => {
     for (const ctrl of ctrls.values()) {
       ctrl.dispose();
     }
     ctrls.clear();
-    syncWorkspaceFolders();
+    await syncWorkspaceFolders();
   };
 
-  const syncWorkspaceFolders = () => {
+  const syncWorkspaceFolders = async () => {
     if (!extensions.value?.length) {
       const msg =
         "nodejs-testing.extensions array is empty. Please remove the setting 'nodejs-testing.extensions' or define at least one element.";
@@ -36,10 +37,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
       if (!ctrls.has(folder)) {
+
+        const nodeJsPath = await findNode(folder.uri.fsPath).catch((e) => {
+          vscode.window.showErrorMessage("nodejs-testing failed to find node path: " + e.message);
+          return 'node';
+        });
+
         const runner = new TestRunner(
           smStore,
           new ConfigValue("concurrency", 0, folder),
-          new ConfigValue("nodejsPath", "node", folder),
+          new ConfigValue("nodejsPath", nodeJsPath || "node", folder),
           new ConfigValue("verbose", false, folder),
           new ConfigValue("style", Style.Spec, folder),
           context.extensionUri.fsPath,
@@ -110,7 +117,7 @@ export async function activate(context: vscode.ExtensionContext) {
     new vscode.Disposable(() => ctrls.forEach((c) => c.dispose())),
   );
 
-  syncWorkspaceFolders();
+  await syncWorkspaceFolders();
   for (const editor of vscode.window.visibleTextEditors) {
     syncTextDocument(editor.document);
   }
