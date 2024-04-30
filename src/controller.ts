@@ -10,6 +10,7 @@ import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
+import { ExtensionConfig } from './extension-config';
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
 

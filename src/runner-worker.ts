@@ -9,8 +9,9 @@ import split from "split2";
 import { StackFrame } from "stacktrace-parser";
 import { pathToFileURL } from "url";
 import { WebSocket } from "ws";
+import { ExtensionConfig } from "./extension-config";
 import { escapeRegex } from "./regex";
-import { CompleteStatus, ITestRunFile, JsonFromReporter, contract } from "./runner-protocol";
+import { ITestRunFile, JsonFromReporter, contract } from "./runner-protocol";
 
 const colors = [
   ansiColors.redBright,
@@ -45,11 +46,6 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   extraEnv,
   coverageDir,
 }) => {
-  const majorVersion = /^v([0-9]+)/.exec(process.version);
-  if (!majorVersion || Number(majorVersion[1]) < 19) {
-    return { status: CompleteStatus.NodeVersionOutdated, message: process.version };
-  }
-
   const todo: Promise<void>[] = [];
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
@@ -57,7 +53,7 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   }
   await Promise.all(todo);
 
-  return { status: CompleteStatus.Done };
+  return null;
 };
 
 async function doWork(
@@ -90,7 +86,7 @@ async function doWork(
 
       args.push(next.path);
       if (verbose) {
-        server.output(`${prefix}${path.basename(process.argv0)} ${args.join('" "')}`);
+        server.output(`${prefix}${process.argv0} ${args.join('" "')}`);
       }
 
       const cp = spawn(process.argv0, args, {
@@ -282,5 +278,5 @@ const { server } = Contract.getServerFromStream(
   contract,
   new NodeJsMessageStream(socket, socket),
   {},
-  { start, kill: () => process.exit() },
+  { start, kill: () => process.exit(), version: () => Promise.resolve(process.version) },
 );

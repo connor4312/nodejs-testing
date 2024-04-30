@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import { spawnSync } from "child_process";
 import { randomBytes } from "crypto";
 import { promises as fs } from "fs";
 import { tmpdir } from "os";
@@ -6,6 +7,7 @@ import * as path from "path";
 import * as sinon from "sinon";
 import { setTimeout } from "timers/promises";
 import * as vscode from "vscode";
+import { ConfigValue } from "../configValue";
 import type { Controller } from "../controller";
 
 export const getController = async () => {
@@ -20,6 +22,18 @@ export const getController = async () => {
   const controller = c.values().next().value as Controller;
   await controller.startWatchingWorkspace();
   return controller;
+};
+
+export const getNodeVersion = () => {
+  const cfg = new ConfigValue("nodejsPath", "node", vscode.workspace.workspaceFolders?.[0]);
+  const result = spawnSync(cfg.value, ["--version"]);
+  const version = result.output.toString().trim();
+  const match = /v(\d+)\.\d+\.\d+/.exec(version);
+  if (!match) {
+    throw new Error(`Could not read node version: ${version}`);
+  }
+
+  return Number(match[1]);
 };
 
 type TestTreeExpectation = [string, TestTreeExpectation[]?];
@@ -157,6 +171,8 @@ export class FakeTestRun implements vscode.TestRun {
   end(): void {
     this.ended = true;
   }
+  addCoverage(fileCoverage: vscode.FileCoverage): void {}
+  onDidDispose = new vscode.EventEmitter<void>().event;
   //#endregion
 }
 

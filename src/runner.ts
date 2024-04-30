@@ -13,11 +13,18 @@ import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { applyC8Coverage } from "./coverage";
 import { DisposableStore } from "./disposable";
+import { ExtensionConfig } from "./extension-config";
 import { last } from "./iterable";
-import { ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
+import {
+  ItemType,
+  getContainingItemsForFile,
+  getFullTestName,
+  isParent,
+  testMetadata,
+} from "./metadata";
 import { OutputQueue } from "./outputQueue";
 import { Pretest } from "./pretest";
-import { CompleteStatus, ILog, ITestRunFile, contract } from "./runner-protocol";
+import { ILog, ITestRunFile, contract } from "./runner-protocol";
 import { SourceMapStore } from "./source-map-store";
 import { Style, styleFactories } from "./styles";
 
@@ -80,10 +87,6 @@ export class TestRunner implements vscode.Disposable {
         return;
       }
 
-      const files = await this.solveArguments(ctrl, request);
-      if (token.isCancellationRequested) {
-        return;
-      }
       const concurrency = this.concurrency.value || cpus().length;
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
         const uri = vscode.Uri.parse(path[0]);
@@ -242,26 +245,28 @@ export class TestRunner implements vscode.Disposable {
             );
 
             reg.client
-              .start({
-                files,
-                concurrency,
-                extensions,
-                verbose: this.verbose.value,
-                extraEnv,
-                coverageDir,
-              })
-              .then(({ status, message }) => {
-                switch (status) {
-                  case CompleteStatus.Done:
-                    outputQueue.enqueue(() => run.appendOutput(style.done()));
-                    return resolve(outputQueue.drain());
-                  case CompleteStatus.NodeVersionOutdated:
-                    return reject(
-                      new Error(
-                        `This extension only works with Node.js version 19 and above (you have ${message}). You can change the setting '${this.nodejsPath.key}' if you want to use a different Node.js executable.`,
-                      ),
-                    );
+              .version(null)
+              .then(async (version) => {
+                const majorVersion = /^v([0-9]+)/.exec(version);
+                if (!majorVersion || Number(majorVersion[1]) < 19) {
+                  throw new Error(
+                    `This extension only works with Node.js version 19 and above (you have ${version}). You can change the setting '${this.nodejsPath.key}' if you want to use a different Node.js executable.`,
+                  );
                 }
+
+                const files = await this.solveArguments(ctrl, request, Number(majorVersion[1]));
+                await reg.client.start({
+                  files,
+                  concurrency,
+                  extensions,
+                  verbose: this.verbose.value,
+                  extraEnv,
+                  coverageDir,
+                });
+
+                outputQueue.enqueue(() => run.appendOutput(style.done()));
+                await outputQueue.drain();
+                resolve();
               })
               .catch(reject)
               .finally(() => reg.client.kill());
@@ -351,28 +356,58 @@ export class TestRunner implements vscode.Disposable {
     return sessionPromise;
   }
 
-  private async solveArguments(ctrl: vscode.TestController, request: vscode.TestRunRequest) {
+  private async solveArguments(
+    ctrl: vscode.TestController,
+    request: vscode.TestRunRequest,
+    nodeMajorVersion: number,
+  ) {
+    interface IIncludeFile {
+      uri: vscode.Uri;
+      path: string;
+      include?: Set<string>;
+    }
+
     const exclude = new Set(request.exclude);
-    const includeFiles = new Map<string, ITestRunFile>();
+    const includeFiles = new Map<string, IIncludeFile>();
 
-    const addTestsToFileRecord = (record: ITestRunFile, queue: vscode.TestItem[]) => {
-      if (!record.include) {
-        return; // already running whole file
-      }
+    // Node <22 did not support running tests by full names and excluded
+    // children of tests whose names did not also match (nodejs/node#46728).
+    //
+    // Node 22 and above are much more similar to Mocha et al. who allow
+    // filtering to space-delimited full test names and they automatically run
+    // subtests of tests included this way.
+    const modernNamePatterns = nodeMajorVersion >= 22;
 
-      // node's runner doesn't automatically include subtests of an included
-      // test. Do so here, avoiding exclusions.
-      const include = new Set(record.include);
+    const addTestsToFileRecord = (record: IIncludeFile, queue: vscode.TestItem[]) => {
+      record.include ??= new Set();
+
       while (queue.length) {
         const item = queue.pop()!;
-        include.add(item.label);
-        for (const [, child] of item.children) {
-          if (!request.exclude?.includes(child)) {
-            queue.push(child);
+
+        // For legacy node, each previous part must be included. For modern Node,
+        // include the labels of nodes for whom we wish to run all subtests --
+        // that is, tests with no excludes.
+        if (!modernNamePatterns) {
+          record.include.add(item.label);
+          for (const [, child] of item.children) {
+            if (!request.exclude?.includes(child)) {
+              queue.push(child);
+            }
+          }
+        } else {
+          // not the fastest to check every time, but this is not that common
+          // of a code path and request.exclude is usually very small
+          if (request.exclude?.some((t) => isParent(item, t))) {
+            for (const [, child] of item.children) {
+              if (!request.exclude?.includes(child)) {
+                queue.push(child);
+              }
+            }
+          } else {
+            record.include.add(getFullTestName(item));
           }
         }
       }
-      record.include = [...include];
     };
 
     const addInclude = (test: vscode.TestItem) => {
@@ -394,35 +429,32 @@ export class TestRunner implements vscode.Disposable {
             break;
           }
 
-          const rec: ITestRunFile = { uri: test.uri!.toString(), path: metadata.compiledIn.fsPath };
+          const rec: IIncludeFile = { uri: test.uri!, path: metadata.compiledIn.fsPath };
           includeFiles.set(key, rec);
           // if there's any exclude in this file, we need to expand its tests so we can omit it.
-          if (request.exclude?.some((e) => e.uri?.toString() === test.uri!.toString())) {
-            rec.include = [];
+          if (request.exclude?.some((t) => isParent(test, t))) {
             addTestsToFileRecord(
               rec,
               [...test.children].map(([, t]) => t),
             );
           }
+          break;
         }
 
         case ItemType.Test: {
           const key = test.uri!.toString();
           let record = includeFiles.get(key);
           if (!record) {
-            let include: string[] = [];
             for (let f = test.parent; f; f = f.parent) {
               const metadata = testMetadata.get(f);
               if (metadata?.type === ItemType.File) {
                 record = {
                   path: metadata.compiledIn.fsPath,
-                  uri: test.uri!.toString(),
-                  include,
+                  uri: test.uri!,
+                  include: new Set(),
                 };
                 break;
               }
-
-              include.push(f.label);
             }
 
             if (!record) {
@@ -432,7 +464,21 @@ export class TestRunner implements vscode.Disposable {
             includeFiles.set(key, record);
           }
 
-          addTestsToFileRecord(record, [test]);
+          record.include ??= new Set();
+
+          if (!modernNamePatterns) {
+            for (let f = test.parent; f; f = f.parent) {
+              record.include.add(f.label);
+            }
+          }
+
+          // Include the test without qualifications if its subtests will run
+          // (with modernNamePatterns) and if there's not exclusions below.
+          if (modernNamePatterns && !request.exclude?.some((t) => isParent(test, t))) {
+            record.include.add(getFullTestName(test));
+          } else {
+            addTestsToFileRecord(record, [test]);
+          }
           break;
         }
       }
@@ -450,6 +496,14 @@ export class TestRunner implements vscode.Disposable {
     }
 
     // sort run order to avoid jumping around in the test explorer
-    return [...includeFiles.values()].sort((a, b) => a.path.localeCompare(b.path));
+    return [...includeFiles.values()]
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map(
+        (f): ITestRunFile => ({
+          uri: f.uri.toString(),
+          path: f.path,
+          include: f.include ? [...f.include] : undefined,
+        }),
+      );
   }
 }
