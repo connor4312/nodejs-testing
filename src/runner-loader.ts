@@ -89,7 +89,7 @@ module.exports = async function* reporter(source: AsyncGenerator<TestEvent>) {
       const err = evt.data.details.error as Error & { cause?: any };
       if (err.cause instanceof Error) {
         (err.cause as any)._message = err.cause.message;
-        (err.cause as any)._stack = err.stack ? parse(err.stack) : undefined;
+        (err.cause as any)._stack = err.cause.stack ? parse(err.cause.stack) : undefined;
       }
 
       if (err.cause?.hasOwnProperty("expected") && err.cause?.hasOwnProperty("actual")) {
