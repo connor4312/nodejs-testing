@@ -41,29 +41,30 @@ export class TestRunner implements vscode.Disposable {
   private readonly workerPath: string;
   private readonly disposables = new DisposableStore();
 
+  private readonly concurrency: ConfigValue<number>;
+  private readonly nodejsPath: ConfigValue<string>;
+  private readonly verbose: ConfigValue<boolean>;
+  private readonly style: ConfigValue<Style>;
+  private readonly nodejsParameters: ConfigValue<string[]>;
+  private readonly envFile: ConfigValue<string>;
+  private readonly env: ConfigValue<Record<string, string>>;
+  private readonly pretest: Pretest;
+
   constructor(
+    folder: vscode.WorkspaceFolder,
     private readonly smStore: SourceMapStore,
-    private readonly concurrency: ConfigValue<number>,
-    private readonly nodejsPath: ConfigValue<string>,
-    private readonly verbose: ConfigValue<boolean>,
-    private readonly style: ConfigValue<Style>,
     extensionDir: string,
-    private readonly nodejsParameters: ConfigValue<string[]>,
-    private readonly envFile: ConfigValue<string>,
-    private readonly env: ConfigValue<Record<string, string>>,
     private readonly extensions: ConfigValue<ExtensionConfig[]>,
-    private readonly pretest: Pretest,
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
-    this.disposables.add(concurrency);
-    this.disposables.add(nodejsPath);
-    this.disposables.add(verbose);
-    this.disposables.add(style);
-    this.disposables.add(nodejsParameters);
-    this.disposables.add(envFile);
-    this.disposables.add(env);
-    this.disposables.add(extensions);
-    this.disposables.add(pretest);
+    this.concurrency = this.disposables.add(new ConfigValue("concurrency", 0, folder));
+    this.nodejsPath = this.disposables.add(new ConfigValue("nodejsPath", "node", folder));
+    this.verbose = this.disposables.add(new ConfigValue("verbose", false, folder));
+    this.style = this.disposables.add(new ConfigValue("style", Style.Spec, folder));
+    this.nodejsParameters = this.disposables.add(new ConfigValue("nodejsParameters", [], folder));
+    this.envFile = this.disposables.add(new ConfigValue("envFile", "", folder));
+    this.env = this.disposables.add(new ConfigValue("env", {}, folder));
+    this.pretest = this.disposables.add(new Pretest(new ConfigValue("pretest", undefined, folder)));
   }
 
   public dispose() {
