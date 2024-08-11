@@ -2,6 +2,7 @@ import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
 import * as ansiColors from "ansi-colors";
 import { spawn } from "child_process";
+import { promises as fs } from "fs";
 import { connect } from "net";
 import * as path from "path";
 import { dirname, join } from "path";
@@ -56,6 +57,38 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   return null;
 };
 
+const nearestPackageJsons = new Map<
+  /* directory */ string,
+  /* package.json path */ string | undefined
+>();
+
+const getNearestPackageJson = async (dir: string): Promise<string | undefined> => {
+  if (nearestPackageJsons.has(dir)) {
+    return nearestPackageJsons.get(dir)!;
+  }
+
+  const packageJson = join(dir, "package.json");
+  const exists = await fs.stat(packageJson).then(
+    () => true,
+    () => false,
+  );
+
+  if (exists) {
+    nearestPackageJsons.set(dir, packageJson);
+    return packageJson;
+  }
+
+  const next = dirname(dir);
+  if (next === dir) {
+    nearestPackageJsons.set(dir, undefined);
+    return undefined;
+  }
+
+  const result = await getNearestPackageJson(next);
+  nearestPackageJsons.set(dir, result);
+  return result;
+};
+
 async function doWork(
   prefix: string,
   queue: ITestRunFile[],
@@ -66,6 +99,7 @@ async function doWork(
 ) {
   while (queue.length) {
     const next = queue.pop()!;
+    const containingPackage = await getNearestPackageJson(dirname(next.path));
     await new Promise<void>((resolve) => {
       if (verbose) {
         server.output(`${prefix}starting ${ansiColors.underline(next.path)}`);
@@ -90,7 +124,7 @@ async function doWork(
       }
 
       const cp = spawn(process.argv0, args, {
-        cwd: dirname(next.path),
+        cwd: dirname(containingPackage || next.path),
         stdio: "pipe",
         env: {
           // enable color for modules that use `supports-color` or similar
