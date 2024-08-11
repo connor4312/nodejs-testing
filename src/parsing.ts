@@ -48,6 +48,10 @@ const matchNamespaced =
   (name: string): ExtractTest =>
   (n) => {
     const callee = unpackCalleeExpression(n);
+    if (callee.type === C.Identifier && callee.name === name) {
+      return 'test'; // default export, #42
+    }
+
     return callee.type === C.MemberExpression &&
       callee.object.type === C.Identifier &&
       callee.object.name === name &&

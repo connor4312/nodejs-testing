@@ -113,4 +113,22 @@ const node_test_1 = require("node:test");
 
     expect(parseSource(src)).toMatchSnapshot();
   });
+
+  it("works with default cjs import", () => {
+    const src = `
+      const nt = require(\`node:test\`);
+      nt(\`addition\`, () => {});
+    `;
+
+    expect(parseSource(src)).toMatchSnapshot();
+  });
+
+  it("works with default esm import", () => {
+    const src = `
+      import nt from "node:test";
+      nt(\`addition\`, () => {});
+    `;
+
+    expect(parseSource(src)).toMatchSnapshot();
+  });
 });

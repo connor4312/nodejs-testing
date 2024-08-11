@@ -594,6 +594,46 @@ exports[`extract > extracts ts import mangled 1`] = `
 ]
 `;
 
+exports[`extract > works with default cjs import 1`] = `
+[
+  {
+    "children": [],
+    "fn": "test",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 30,
+        "line": 3,
+      },
+      "start": Position {
+        "column": 6,
+        "line": 3,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
+exports[`extract > works with default esm import 1`] = `
+[
+  {
+    "children": [],
+    "fn": "test",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 30,
+        "line": 3,
+      },
+      "start": Position {
+        "column": 6,
+        "line": 3,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
 exports[`extract > works with string literals 1`] = `
 [
   {
