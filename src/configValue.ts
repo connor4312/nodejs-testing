@@ -5,7 +5,7 @@ const sectionName = "nodejs-testing";
 
 const walkObject = <T>(value: T, replacer: (value: unknown) => any): T => {
   if (value instanceof Array) {
-    return value.map(replacer) as T;
+    return value.map(v => walkObject(v, replacer)) as T;
   }
 
   if (value && typeof value === "object") {
