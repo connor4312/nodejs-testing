@@ -271,12 +271,22 @@ function setupInspector(testFile: string, inspectorURL: string) {
 
 const socket = connect(process.argv[2]).on("error", (e) => {
   console.error(e.message);
-  process.exit(1);
+  flushThenExit(1);
 });
 
+const stream = new NodeJsMessageStream(socket, socket);
 const { server } = Contract.getServerFromStream(
   contract,
-  new NodeJsMessageStream(socket, socket),
+  stream,
   {},
-  { start, kill: () => process.exit(), version: () => Promise.resolve(process.version) },
+  {
+    start,
+    kill: () => queueMicrotask(() => flushThenExit()),
+    version: () => Promise.resolve(process.version),
+  },
 );
+
+const flushThenExit = (code = 0) => {
+  stream.onClosed.then(() => process.exit(code));
+  stream.close();
+};
