@@ -37,6 +37,7 @@ it("runs tests", async () => {
     "2",
   );
   message.location = run.terminalStates()[1]?.message?.location;
+  message.stackTrace = run.terminalStates()[1]?.message?.stackTrace;
 
   assert.deepStrictEqual(run.terminalStates(), [
     {

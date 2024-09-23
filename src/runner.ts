@@ -7,7 +7,7 @@ import { parse as parseEnv } from "dotenv";
 import fs from "fs/promises";
 import { createServer } from "net";
 import { cpus, tmpdir } from "os";
-import { join } from "path";
+import { isAbsolute, join } from "path";
 import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
@@ -226,12 +226,27 @@ export class TestRunner implements vscode.Disposable {
                   if (!test) {
                     return;
                   }
-
                   const asText = error || "Test failed";
                   const testMessage =
                     actual !== undefined && expected !== undefined
                       ? vscode.TestMessage.diff(asText, expected, actual)
                       : new vscode.TestMessage(asText);
+
+                  testMessage.stackTrace = stack?.map(
+                    (s) =>
+                      new vscode.TestMessageStackFrame(
+                        s.file || "<unknown>",
+                        s.file ? pathOrUriToUri(s.file) : undefined,
+                        new vscode.Position((s.lineNumber || 1) - 1, (s.column || 1) - 1),
+                      ),
+                  );
+                  if (stack) {
+                    const startOfMessage = /^\s*at /.exec(asText);
+                    if (startOfMessage) {
+                      testMessage.message = asText.slice(0, startOfMessage.index - 1);
+                    }
+                  }
+
                   const lastFrame = stack?.find((s) => !s.file?.startsWith("node:"));
                   const location = lastFrame?.file
                     ? mapLocation(lastFrame.file, lastFrame.lineNumber, lastFrame.column)
@@ -507,4 +522,14 @@ export class TestRunner implements vscode.Disposable {
         }),
       );
   }
+}
+
+function pathOrUriToUri(path: string): vscode.Uri | undefined {
+  return isAbsolute(path)
+    ? vscode.Uri.file(path)
+    : // note: intentionally not using URL.canParse, since `node:internals` and
+      // other things you don't expect could parse to URLs.
+      path.includes("://")
+      ? vscode.Uri.parse(path)
+      : undefined;
 }
