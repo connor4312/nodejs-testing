@@ -197,7 +197,7 @@ async function doWork(
               expected?: any;
               _stack?: StackFrame[];
               _message?: string;
-            } = cause && typeof cause === "object" ? cause : {};
+            } = cause && typeof cause === "object" ? (cause as any) : {};
             const message =
               causeObj._message ||
               (typeof cause === "string" ? cause : JSON.stringify(cause, null, 2));

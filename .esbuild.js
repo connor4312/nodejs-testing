@@ -13,10 +13,11 @@ const ctx = esbuild.context({
   ],
   tsconfig: "./tsconfig.json",
   bundle: true,
-  external: ["vscode", "esbuild", "mocha"],
+  external: ["vscode", "esbuild", "mocha", "monocart-coverage-reports"],
   sourcemap: !minify,
   minify,
   platform: "node",
+  target: "node20",
   outdir: "out",
   plugins: [
     {

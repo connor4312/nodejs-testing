@@ -49,7 +49,7 @@ const matchNamespaced =
   (n) => {
     const callee = unpackCalleeExpression(n);
     if (callee.type === C.Identifier && callee.name === name) {
-      return 'test'; // default export, #42
+      return "test"; // default export, #42
     }
 
     return callee.type === C.MemberExpression &&
@@ -94,7 +94,9 @@ export const parseSource = (text: string) => {
               idTests.push(matchNamespaced(spec.local.name));
               break;
             case C.ImportSpecifier:
-              idTests.push(matchIdentified(spec.imported.name, spec.local.name));
+              if (spec.imported.type === C.Identifier) {
+                idTests.push(matchIdentified(spec.imported.name, spec.local.name));
+              }
               break;
           }
         }

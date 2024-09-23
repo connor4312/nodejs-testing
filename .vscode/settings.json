@@ -12,5 +12,6 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   },
-  "testing.openTesting": "openOnTestStart"
+  "testing.openTesting": "openOnTestStart",
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

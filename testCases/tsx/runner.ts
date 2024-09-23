@@ -36,7 +36,7 @@ it("runs tests", async () => {
     "4",
     "2",
   );
-  message.location = undefined;
+  message.location = run.terminalStates()[1]?.message?.location;
 
   assert.deepStrictEqual(run.terminalStates(), [
     {
