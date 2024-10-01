@@ -1,6 +1,6 @@
 import type { Options } from "acorn";
 import { parse } from "acorn-loose";
-import { traverse } from "estraverse";
+import * as evk from "eslint-visitor-keys";
 import { CallExpression, Expression, Node, SourceLocation, Super } from "estree";
 
 const enum C {
@@ -152,4 +152,35 @@ export const parseSource = (text: string) => {
   });
 
   return stack[0].r.children;
+};
+
+const traverse = (
+  node: Node | undefined,
+  visitor: {
+    enter: (node: Node, parent?: Node) => void;
+    leave: (node: Node) => void;
+  },
+  parent?: Node,
+) => {
+  if (!node) {
+    return;
+  }
+
+  visitor.enter(node, parent);
+
+  const keys = evk.KEYS[node.type];
+  if (keys) {
+    for (const key of keys) {
+      const child = (node as unknown as Record<string, Node | Node[]>)[key];
+      if (child instanceof Array) {
+        for (const [i, c] of child.entries()) {
+          traverse(c, visitor, node);
+        }
+      } else if (child) {
+        traverse(child, visitor, node);
+      }
+    }
+  }
+
+  visitor.leave(node);
 };
