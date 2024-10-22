@@ -159,6 +159,19 @@
               "type": "string"
             },
             "default": {}
+          },
+          "nodejs-testing.debugOptions": {
+            "type": "object",
+            "markdownDescription": "Options used for debugging, normally found in your launch.json. [See documentation here](https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_launch-configuration-attributes).",
+            "examples": [
+              {
+                "skipFiles": [
+                  "**/node_modules/**",
+                  "<node_internals>/**"
+                ]
+              }
+            ],
+            "default": {}
           }
         }
       }

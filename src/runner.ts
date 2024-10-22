@@ -48,6 +48,7 @@ export class TestRunner implements vscode.Disposable {
   private readonly nodejsParameters: ConfigValue<string[]>;
   private readonly envFile: ConfigValue<string>;
   private readonly env: ConfigValue<Record<string, string>>;
+  private readonly debugOptions: ConfigValue<Record<string, any>>;
   private readonly pretest: Pretest;
 
   constructor(
@@ -65,6 +66,7 @@ export class TestRunner implements vscode.Disposable {
     this.envFile = this.disposables.add(new ConfigValue("envFile", "", folder));
     this.env = this.disposables.add(new ConfigValue("env", {}, folder));
     this.pretest = this.disposables.add(new Pretest(new ConfigValue("pretest", undefined, folder)));
+    this.debugOptions = this.disposables.add(new ConfigValue("debugOptions", {}, folder));
   }
 
   public dispose() {
@@ -361,6 +363,7 @@ export class TestRunner implements vscode.Disposable {
     });
 
     await vscode.debug.startDebugging(wf, {
+      ...this.debugOptions.value,
       type: "pwa-node",
       name: "Run Tests",
       request: "launch",
