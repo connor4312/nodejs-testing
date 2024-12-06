@@ -11,6 +11,7 @@ import { StackFrame } from "stacktrace-parser";
 import { pathToFileURL } from "url";
 import { WebSocket } from "ws";
 import { ExtensionConfig } from "./extension-config";
+import { Capability, NodeVersion } from "./node-version";
 import { escapeRegex } from "./regex";
 import { ITestRunFile, JsonFromReporter, contract } from "./runner-protocol";
 
@@ -46,11 +47,14 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   verbose,
   extraEnv,
   coverageDir,
+  regenerateSnapshots,
 }) => {
   const todo: Promise<void>[] = [];
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
-    todo.push(doWork(prefix, files, extensions, verbose, extraEnv, coverageDir));
+    todo.push(
+      doWork(prefix, files, extensions, verbose, extraEnv, coverageDir, regenerateSnapshots),
+    );
   }
   await Promise.all(todo);
 
@@ -89,6 +93,8 @@ const getNearestPackageJson = async (dir: string): Promise<string | undefined> =
   return result;
 };
 
+const nodeVersion = NodeVersion.process();
+
 async function doWork(
   prefix: string,
   queue: ITestRunFile[],
@@ -96,6 +102,7 @@ async function doWork(
   verbose: boolean,
   extraEnv: Record<string, string>,
   coverageDir: string | undefined,
+  regenerateSnapshots: boolean,
 ) {
   while (queue.length) {
     const next = queue.pop()!;
@@ -111,6 +118,13 @@ async function doWork(
           x.extensions.some((y: string) => `.${y}` == ext),
         )?.parameters;
         if (parameters) args.push(...parameters);
+      }
+
+      if (nodeVersion.has(Capability.ExperimentalSnapshots)) {
+        args.push("--experimental-test-snapshots");
+      }
+      if (regenerateSnapshots) {
+        args.push("--test-update-snapshots");
       }
 
       args.push("--test-reporter", pathToFileURL(join(__dirname, "runner-loader.js")).toString());
@@ -197,6 +211,7 @@ async function doWork(
               expected?: any;
               _stack?: StackFrame[];
               _message?: string;
+              _isNodeSnapshotError?: true;
             } = cause && typeof cause === "object" ? (cause as any) : {};
             const message =
               causeObj._message ||
@@ -207,6 +222,7 @@ async function doWork(
               duration: json.data.details.duration_ms,
               error: message,
               stack: causeObj._stack,
+              isSnapshotMissing: !!causeObj._isNodeSnapshotError,
               expected: typeof causeObj.expected === "string" ? causeObj.expected : undefined,
               actual: typeof causeObj.actual === "string" ? causeObj.actual : undefined,
             });

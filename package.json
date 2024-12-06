@@ -175,7 +175,39 @@
           }
         }
       }
-    ]
+    ],
+    "commands": [
+      {
+        "title": "Create Snapshot File",
+        "command": "nodejs-testing.rerunWithSnapshot"
+      },
+      {
+        "title": "Update Snapshot File",
+        "command": "nodejs-testing.rerunWithSnapshot2"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "nodejs-testing.rerunWithSnapshot",
+          "when": "false"
+        },
+        {
+          "command": "nodejs-testing.rerunWithSnapshot2",
+          "when": "false"
+        }
+      ],
+      "testing/message/content": [
+        {
+          "command": "nodejs-testing.rerunWithSnapshot",
+          "when": "testMessage == isNodejsSnapshotMissing && !testResultOutdated"
+        },
+        {
+          "command": "nodejs-testing.rerunWithSnapshot2",
+          "when": "testMessage == isNodejsSnapshotOutdated && !testResultOutdated"
+        }
+      ]
+    }
   },
   "repository": {
     "type": "git",
@@ -215,7 +247,7 @@
     "prettier": "^3.2.5",
     "sinon": "^17.0.1",
     "tsx": "^4.7.3",
-    "typescript": "^5.4.2",
+    "typescript": "^5.7.2",
     "vitest": "^2.1.1"
   },
   "prettier": {

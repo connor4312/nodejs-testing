@@ -8,6 +8,7 @@ import {
   type PrettyFormatOptions,
 } from "pretty-format";
 import { parse } from "stacktrace-parser";
+import { nodeSnapshotImpl } from "./constants";
 import type { JsonFromReporter } from "./runner-protocol";
 
 // Default options borrowed from jest-diff:
@@ -83,6 +84,25 @@ for (const channel of ["stderr", "stdout"] as const) {
   });
 }
 
+function isSnapshotMissingError(err: any): err is Error & {
+  snapshot: string;
+  filename: string;
+} {
+  // https://github.com/nodejs/node/blob/0547dcfc005ae7d9b60d31a7edc90f5a180f907a/lib/internal/test_runner/snapshot.js#L70-L75
+  return (
+    err &&
+    typeof err === "object" &&
+    err.code === "ERR_INVALID_STATE" &&
+    err.cause?.code === "ENOENT"
+  );
+}
+
+function formatSnapValue(s: string) {
+  // snapshot's serializer adds a newline at the start and end of the string,
+  // so remove that for better diffing
+  return typeof s === "string" && s.startsWith("\n") && s.endsWith("\n") ? s.slice(1, -1) : s;
+}
+
 module.exports = async function* reporter(source: AsyncGenerator<TestEvent>) {
   for await (const evt of source) {
     if (evt.type === "test:fail") {
@@ -92,9 +112,19 @@ module.exports = async function* reporter(source: AsyncGenerator<TestEvent>) {
         (err.cause as any)._stack = err.cause.stack ? parse(err.cause.stack) : undefined;
       }
 
+      if (isSnapshotMissingError(err.cause)) {
+        (err.cause as any)._isNodeSnapshotError = true;
+      }
+
       if (err.cause?.hasOwnProperty("expected") && err.cause?.hasOwnProperty("actual")) {
-        let actual = prettyFormat(err.cause.actual, FORMAT_OPTIONS);
-        let expected = prettyFormat(err.cause.expected, FORMAT_OPTIONS);
+        // snapshot always compares as strings, so don't do extra formatting
+        const isSnap = err.cause?.stack?.includes(nodeSnapshotImpl);
+        let actual = isSnap
+          ? formatSnapValue(err.cause.actual)
+          : prettyFormat(err.cause.actual, FORMAT_OPTIONS);
+        let expected = isSnap
+          ? formatSnapValue(err.cause.expected)
+          : prettyFormat(err.cause.expected, FORMAT_OPTIONS);
         if (actual === expected) {
           actual = prettyFormat(err.cause.actual, FALLBACK_FORMAT_OPTIONS);
           expected = prettyFormat(err.cause.expected, FALLBACK_FORMAT_OPTIONS);

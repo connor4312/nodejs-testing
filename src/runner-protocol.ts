@@ -51,6 +51,7 @@ export const contract = makeContract({
         expected: s.optionalProp(s.sString()),
         actual: s.optionalProp(s.sString()),
         error: s.optionalProp(s.sString()),
+        isSnapshotMissing: s.optionalProp(s.sBoolean()),
         stack: s.optionalProp(s.sArrayOf(stackFrame)),
       }),
     }),
@@ -83,6 +84,7 @@ export const contract = makeContract({
         verbose: s.sBoolean(),
         concurrency: s.sNumber(),
         coverageDir: s.optionalProp(s.sString()),
+        regenerateSnapshots: s.sBoolean(),
         files: s.sArrayOf(
           s.sObject({
             // VS Code URI of the file to associate the test with. For sourcemaps,

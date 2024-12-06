@@ -11,6 +11,7 @@ import { isAbsolute, join } from "path";
 import split from "split2";
 import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
+import { nodeSnapshotImpl } from "./constants";
 import { applyC8Coverage } from "./coverage";
 import { DisposableStore } from "./disposable";
 import { ExtensionConfig } from "./extension-config";
@@ -38,6 +39,11 @@ export type RunHandler = (
 ) => Promise<void>;
 
 export class TestRunner implements vscode.Disposable {
+  /**
+   * Set via a command, before tests are re-run, to generate or update snapshots.
+   */
+  public static regenerateSnapshotsOnNextRun = false;
+
   private readonly workerPath: string;
   private readonly disposables = new DisposableStore();
 
@@ -223,11 +229,24 @@ export class TestRunner implements vscode.Disposable {
                   });
                 },
 
-                failed({ id, duration, actual, expected, error, stack }) {
+                failed({ id, duration, actual, expected, error, stack, isSnapshotMissing }) {
                   const test = getTestByPath(id);
                   if (!test) {
                     return;
                   }
+
+                  if (isSnapshotMissing && expected === undefined) {
+                    const message = new vscode.TestMessage(
+                      "Snapshot not found...\n\nPlease click the button to the right to generate them.",
+                    );
+                    message.contextValue = "isNodejsSnapshotMissing";
+                    outputQueue.enqueue(() => {
+                      run.appendOutput(style.failed(test, "Snapshot missing."));
+                      run.failed(test, message);
+                    });
+                    return;
+                  }
+
                   const asText = error || "Test failed";
                   const testMessage =
                     actual !== undefined && expected !== undefined
@@ -246,6 +265,9 @@ export class TestRunner implements vscode.Disposable {
                     const startOfMessage = /^\s*at /.exec(asText);
                     if (startOfMessage) {
                       testMessage.message = asText.slice(0, startOfMessage.index - 1);
+                    }
+                    if (stack.some((s) => s.file === nodeSnapshotImpl)) {
+                      testMessage.contextValue = "isNodejsSnapshotOutdated";
                     }
                   }
 
@@ -277,11 +299,13 @@ export class TestRunner implements vscode.Disposable {
                   files,
                   concurrency,
                   extensions,
+                  regenerateSnapshots: TestRunner.regenerateSnapshotsOnNextRun,
                   verbose: this.verbose.value,
                   extraEnv,
                   coverageDir,
                 });
 
+                TestRunner.regenerateSnapshotsOnNextRun = false;
                 outputQueue.enqueue(() => run.appendOutput(style.done()));
                 await outputQueue.drain();
                 resolve();
@@ -324,7 +348,7 @@ export class TestRunner implements vscode.Disposable {
   ) {
     if (!debug) {
       return new Promise<void>((resolve, reject) => {
-        const stderr: Buffer[] = [];
+        const stderr: Uint8Array[] = [];
         const cp = spawn(this.nodejsPath.value, [
           ...resolvedNodejsParameters,
           this.workerPath,

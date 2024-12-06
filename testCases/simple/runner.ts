@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { promises as fs } from "fs";
+import { promises as fs, readFileSync } from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
@@ -157,6 +157,90 @@ it("runs subsets of tests", async () => {
     });
   }
 });
+console.log("node verison==", getNodeVersion());
+
+if (getNodeVersion() >= 22) {
+  const snapshotFile = path.join(__dirname, "workspace", "snapshot.test.js.snapshot");
+
+  const snapshotTestFile = path.join(__dirname, "workspace", "snapshot.test.js");
+  const snapshotTestContents = `const { suite, test } = require("node:test");
+
+  suite('suite of snapshot tests', () => {
+    test('snapshot test', (t) => {
+      t.assert.snapshot({ value1: 1, value2: 2 });
+      t.assert.snapshot(5);
+    });
+  });
+  `;
+
+  describe("snapshot tests", () => {
+    beforeEach(async () => {
+      await fs.writeFile(snapshotTestFile, snapshotTestContents);
+    });
+
+    afterEach(async () => {
+      await fs.rm(snapshotFile, { force: true });
+      await fs.rm(snapshotTestFile, { force: true });
+    });
+
+    it("generates snapshots", async () => {
+      const c = await getController();
+      const run1 = await captureTestRun(
+        c,
+        new vscode.TestRunRequest([c.ctrl.items.get("snapshot.test.js")]),
+      );
+      run1.expectStates({
+        "snapshot.test.js/suite of snapshot tests": ["started", "failed"],
+        "snapshot.test.js/suite of snapshot tests/snapshot test": ["started", "failed"],
+      });
+
+      await vscode.commands.executeCommand("nodejs-testing.pre-rerun-with-snapshot-for-test");
+      const run2 = await captureTestRun(
+        c,
+        new vscode.TestRunRequest([c.ctrl.items.get("snapshot.test.js")]),
+      );
+
+      run2.expectStates({
+        "snapshot.test.js/suite of snapshot tests": ["started", "passed"],
+        "snapshot.test.js/suite of snapshot tests/snapshot test": ["started", "passed"],
+      });
+      assert.doesNotThrow(() => {
+        readFileSync(path.join(__dirname, "workspace", "snapshot.test.js.snapshot"));
+      });
+    });
+
+    it("updates incorrect snapshots", async () => {
+      const c = await getController();
+
+      await vscode.commands.executeCommand("nodejs-testing.pre-rerun-with-snapshot-for-test");
+      await captureTestRun(c, new vscode.TestRunRequest([c.ctrl.items.get("snapshot.test.js")]));
+
+      const original = await fs.readFile(snapshotFile, "utf8");
+      await fs.writeFile(snapshotFile, original.replace("value2", "value3"));
+
+      const run1 = await captureTestRun(
+        c,
+        new vscode.TestRunRequest([c.ctrl.items.get("snapshot.test.js")]),
+      );
+      run1.expectStates({
+        "snapshot.test.js/suite of snapshot tests": ["started", "failed"],
+        "snapshot.test.js/suite of snapshot tests/snapshot test": ["started", "failed"],
+      });
+
+      await vscode.commands.executeCommand("nodejs-testing.pre-rerun-with-snapshot-for-test");
+      const run2 = await captureTestRun(
+        c,
+        new vscode.TestRunRequest([c.ctrl.items.get("snapshot.test.js")]),
+      );
+      run2.expectStates({
+        "snapshot.test.js/suite of snapshot tests": ["started", "passed"],
+        "snapshot.test.js/suite of snapshot tests/snapshot test": ["started", "passed"],
+      });
+
+      assert.strictEqual(await fs.readFile(snapshotFile, "utf8"), original);
+    });
+  });
+}
 
 it("runs mixed test requests", async () => {
   const c = await getController();

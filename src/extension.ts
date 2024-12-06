@@ -82,6 +82,11 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   };
 
+  function updateSnapshots() {
+    TestRunner.regenerateSnapshotsOnNextRun = true;
+    return vscode.commands.executeCommand("testing.reRunFailTests");
+  }
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(syncWorkspaceFolders),
     vscode.workspace.onDidChangeTextDocument((e) => syncTextDocument(e.document)),
@@ -89,6 +94,11 @@ export async function activate(context: vscode.ExtensionContext) {
       refreshFolders();
       return ctrls;
     }),
+    vscode.commands.registerCommand("nodejs-testing.pre-rerun-with-snapshot-for-test", () => {
+      TestRunner.regenerateSnapshotsOnNextRun = true;
+    }),
+    vscode.commands.registerCommand("nodejs-testing.rerunWithSnapshot", updateSnapshots),
+    vscode.commands.registerCommand("nodejs-testing.rerunWithSnapshot2", updateSnapshots),
     includePattern.onChange(refreshFolders),
     excludePatterns.onChange(refreshFolders),
     extensions.onChange(refreshFolders),
