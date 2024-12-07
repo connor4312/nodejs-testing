@@ -60,7 +60,10 @@ function init({ typescript }: { typescript: typeof ts_module }) {
       if (!script) {
         logger?.info(`ScriptInfo not found for ${normPath} which should have been in project`);
       }
-      return script && parseSource(typescript, script);
+
+      const ret = script && parseSource(typescript, script);
+      logger?.verbose("Parsed", normPath, ret?.length);
+      return ret;
     }
 
     async function parseFromDisk(path: string) {

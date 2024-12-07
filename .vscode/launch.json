@@ -51,9 +51,6 @@
         "${workspaceFolder}/testCases/${input:caseName}/workspace"
       ],
       "autoAttachChildProcesses": true,
-      "env": {
-        "PATH": "/Users/connor/opt/anaconda3/condabin:/Users/connor/.nvm/versions/node/v19.3.0/bin:/opt/local/bin:/opt/local/sbin:/Users/connor/.elan/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/share/dotnet:~/.dotnet/tools:/Library/Apple/usr/bin:/Users/connor/.cargo/bin:/Users/copeet/.cargo/bin:./node_modules/.bin:/Users/connor/.elan/bin:/Users/connor/.dotnet:/Users/connor/Library/Python/3.10/bin"
-      },
       "trace": true,
       "outFiles": [
         "${workspaceFolder}/testCases/${input:caseName}/runner.js",

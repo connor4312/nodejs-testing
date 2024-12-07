@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   const changesDebounce = new Map<string, NodeJS.Timeout>();
-  const syncTextDocument = (document: vscode.TextDocument) => {
+  const syncTextDocument = (document: vscode.TextDocument, immediate = false) => {
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
     if (document.uri.scheme !== "file" || !folder) {
       return;
@@ -76,13 +76,16 @@ export async function activate(context: vscode.ExtensionContext) {
       clearTimeout(debounce);
     }
 
-    changesDebounce.set(
-      document.uri.toString(),
-      setTimeout(() => {
-        const ctrl = folder && ctrls.get(folder);
-        ctrl?.syncFile(document.uri, () => document.getText());
-      }, 300),
-    );
+    function sync() {
+      const ctrl = folder && ctrls.get(folder);
+      ctrl?.syncFile(document.uri, () => document.getText());
+    }
+
+    if (immediate) {
+      sync();
+    } else {
+      changesDebounce.set(document.uri.toString(), setTimeout(sync, 300));
+    }
   };
 
   function updateSnapshots() {
@@ -94,7 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
     parserServer,
     vscode.workspace.onDidChangeWorkspaceFolders(syncWorkspaceFolders),
     vscode.workspace.onDidChangeTextDocument((e) => syncTextDocument(e.document)),
-    vscode.workspace.onDidOpenTextDocument((e) => syncTextDocument(e)),
+    vscode.workspace.onDidOpenTextDocument((e) => syncTextDocument(e, true)),
     vscode.commands.registerCommand("nodejs-testing.get-controllers-for-test", () => {
       refreshFolders();
       return ctrls;
