@@ -15,3 +15,5 @@ testCases/**
 .nvmrc
 .github
 screenshot.png
+
+!node_modules/@c4312/nodejs-testing-ts-server-plugin/**
