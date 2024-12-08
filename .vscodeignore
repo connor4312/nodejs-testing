@@ -14,8 +14,6 @@ testCases/**
 .esbuild.js
 .nvmrc
 .github
-vitest.config.mjs
 screenshot.png
 
-node_modules/**
 !node_modules/@c4312/nodejs-testing-ts-server-plugin/**

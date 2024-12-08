@@ -173,9 +173,9 @@
             ],
             "default": {}
           },
-          "nodejs-testing.useTypescriptServer": {
+          "nodejs-testing.useTypeScriptServer": {
             "type": "boolean",
-            "markdownDescription": "Controls whether the TypeScript extension is used to discover tests. If you have issues with test discovery, please turn this off. If turning it off solves your problem, please [file an issue](https://github.com/connor4312/nodejs-testing/issues/new?template=Blank+issue) with information about your workspace.\n\nChanging this setting requires a reload of the window to take effect.",
+            "markdownDescription": "Controls whether the TypeScript extension is used to discover tests. If you have issues with test discovery, please turn this off. If turning it off solves your problem, please [file an issue](https://github.com/connor4312/nodejs-testing/issues/new?template=Blank+issue) with information about your workspace.\n\nChanging this setting requires a reload of the workspace to take effect.",
             "default": true
           }
         }
@@ -230,7 +230,7 @@
   "homepage": "https://github.com/connor4312/nodejs-testing#readme",
   "main": "./out/extension.js",
   "scripts": {
-    "package": "node -e 'fs.rmSync(\"out\",{force:true,recursive:true})' && npx -y @vscode/vsce package",
+    "package": "npx -y @vscode/vsce package --no-dependencies",
     "vscode:prepublish": "node .esbuild.js --minify",
     "compile": "node .esbuild.js --minify",
     "watch": "node .esbuild.js --watch",

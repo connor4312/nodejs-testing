@@ -176,7 +176,7 @@ export class Controller {
       return;
     }
 
-    const tree = await this.sourceParser.parse(uri.fsPath, contents);
+    const tree = await this.sourceParser.parse(uri.fsPath);
     if (!tree?.length) {
       this.deleteFileTests(uri.toString());
       return;

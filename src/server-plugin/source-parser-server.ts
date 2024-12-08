@@ -1,11 +1,10 @@
 import { Contract } from "@hediet/json-rpc";
 import { NodeJsMessageStream } from "@hediet/json-rpc-streams/src";
-import { createServer } from "net";
+import { createServer, Server } from "net";
 import { tmpdir } from "os";
-import { extname, join } from "path";
+import { join } from "path";
 import * as vscode from "vscode";
 import { ConfigValue } from "../configValue";
-import { MutableDisposable } from "../disposable";
 import { parseSource as parseAcornSource } from "./acorn-parsing";
 import { contract } from "./server-protocol";
 import { IParsedNode } from "./ts-parsing";
@@ -17,25 +16,16 @@ const typeScriptExtensionId = "vscode.typescript-language-features";
 export const getRandomPipe = () =>
   join(socketDir, `nodejs-test.${process.pid}-${socketCounter++}.sock`);
 
-const jsTsExtensions = new Set([".js", ".ts", ".mjs", ".mts", ".cjs", ".cts"]);
-
 export class SourceParserServer implements vscode.Disposable {
   public readonly address = getRandomPipe();
   private readonly onDidConnect = new vscode.EventEmitter<void>();
   private readonly connected = new Set<(typeof contract)["TClientInterface"]>();
-  private readonly useTsServer = new ConfigValue("useTypescriptServer", true);
-  private readonly netServer = new MutableDisposable();
-  private hasOpenedJsTsDocument = false;
+  private readonly netServer: Server;
+  private readonly useTsServer = new ConfigValue("useTypeScriptServer", true);
   private installed?: Promise<void>;
 
-  private showInstallError() {
-    vscode.window.showErrorMessage(
-      "The Node.js test runner extension requires the TypeScript Language Features extension (${typeScriptExtensionId}) but it is not installed or is disabled.",
-    );
-  }
-
-  private startServer() {
-    const server = createServer((socket) => {
+  constructor() {
+    this.netServer = createServer((socket) => {
       const s = Contract.registerServerToStream(
         contract,
         new NodeJsMessageStream(socket, socket),
@@ -48,17 +38,15 @@ export class SourceParserServer implements vscode.Disposable {
       this.onDidConnect.fire();
     });
 
-    server.on("error", () => {
-      vscode.window.showErrorMessage(
-        "Error starting the Node.js test runner server, please file an issue.",
-      );
-    });
+    if (this.useTsServer.value) {
+      this.netServer.listen(this.address);
+    }
+  }
 
-    this.netServer.value = {
-      dispose: () => server.close(),
-    };
-
-    return new Promise<void>((r) => server.listen(this.address, r));
+  private showInstallError() {
+    vscode.window.showErrorMessage(
+      "The Node.js test runner extension requires the TypeScript Language Features extension (${typeScriptExtensionId}) but it is not installed or is disabled.",
+    );
   }
 
   private async install() {
@@ -76,46 +64,20 @@ export class SourceParserServer implements vscode.Disposable {
       return;
     }
 
-    await this.startServer();
-
     api.configurePlugin("@c4312/nodejs-testing-ts-server-plugin", {
       address: this.address,
     });
   }
 
-  private async triggerTsActivation(file: string) {
-    // This is needed because the TS host is activated lazily, and until
-    // a document is opened all calls to the TS server will block. See:
-    // https://github.com/microsoft/vscode/blob/49e0129f38291beeedfc5777c6c18c288ddf878e/extensions/typescript-language-features/src/lazyClientHost.ts#L84-L91
-    // Without this, then tests cannot be discovered until a user opens a file.
-    if (this.hasOpenedJsTsDocument || !jsTsExtensions.has(extname(file))) {
-      return;
-    }
-
-    this.hasOpenedJsTsDocument = true;
-
-    const doc = await vscode.workspace.openTextDocument(file);
-
-    // It seems that just opening a document is not enough to wake the language
-    // server, so we also ask for definitions at the first character.
-    await vscode.commands.executeCommand(
-      "vscode.executeDefinitionProvider",
-      doc.uri,
-      new vscode.Position(0, 0),
-    );
-  }
-
   public dispose() {
-    this.netServer.dispose();
+    this.netServer.close();
     this.onDidConnect.dispose();
   }
 
-  public async parse(file: string, contents: string): Promise<IParsedNode[] | undefined> {
+  public async parse(file: string): Promise<IParsedNode[] | undefined> {
     if (!this.useTsServer.value) {
-      return parseAcornSource(contents);
+      return parseAcornSource(vscode.Uri.file(file).fsPath);
     }
-
-    await this.triggerTsActivation(file);
     this.installed ??= this.install();
     await this.installed;
 
