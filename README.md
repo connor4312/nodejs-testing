@@ -54,5 +54,3 @@ _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor431
   You can also import other helpers by adding parameters like `["--import", "${workspaceFolder}/path/to/file.js"]`. See the [Node.js command line API](https://nodejs.org/api/cli.html) for a full list of options.
 
   Finally, in _addition to_ an `extensions` option, you can inspect specify a `filePattern` option if you want to name your files differently than the default [naming scheme](https://nodejs.org/docs/latest-v20.x/api/test.html#running-tests-from-the-command-line).
-
-- `nodejs-testing.useTypeScriptServer` controls whether the TypeScript extension is used to discover tests. If you have issues with test discovery, please turn this off. If turning it off solves your problem, please [file an issue](https://github.com/connor4312/nodejs-testing/issues/new?template=Blank+issue) with information about your workspace. Changing this setting requires a reload of the workspace to take effect.

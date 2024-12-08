@@ -2,12 +2,10 @@ import * as vscode from "vscode";
 import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
 import { TestRunner } from "./runner";
-import { SourceParserServer } from "./server-plugin/source-parser-server";
 import { SourceMapStore } from "./source-map-store";
 
 export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
-  const parserServer = new SourceParserServer();
   const includePattern = new ConfigValue("include", ["${workspaceFolder}"]);
   const excludePatterns = new ConfigValue("exclude", ["**/node_modules/**"]);
   const extensions = new ConfigValue("extensions", [
@@ -46,7 +44,6 @@ export async function activate(context: vscode.ExtensionContext) {
             ),
             folder,
             smStore,
-            parserServer,
             runner,
             includePattern.value,
             excludePatterns.value,
@@ -91,10 +88,8 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    parserServer,
     vscode.workspace.onDidChangeWorkspaceFolders(syncWorkspaceFolders),
     vscode.workspace.onDidChangeTextDocument((e) => syncTextDocument(e.document)),
-    vscode.workspace.onDidOpenTextDocument((e) => syncTextDocument(e)),
     vscode.commands.registerCommand("nodejs-testing.get-controllers-for-test", () => {
       refreshFolders();
       return ctrls;

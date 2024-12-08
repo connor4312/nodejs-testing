@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSource } from "./acorn-parsing";
+import { parseSource } from "./parsing";
 
 const testCases = (prefix = "") => `${prefix}describe("math", () => {
   ${prefix}it("addition", () => {

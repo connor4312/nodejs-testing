@@ -26,9 +26,12 @@ import {
 import { OutputQueue } from "./outputQueue";
 import { Pretest } from "./pretest";
 import { ILog, ITestRunFile, contract } from "./runner-protocol";
-import { getRandomPipe } from "./server-plugin/source-parser-server";
 import { SourceMapStore } from "./source-map-store";
 import { Style, styleFactories } from "./styles";
+
+let socketCounter = 0;
+const socketDir = process.platform === "win32" ? "\\\\.\\pipe\\" : tmpdir();
+const getRandomPipe = () => join(socketDir, `nodejs-test.${process.pid}-${socketCounter++}.sock`);
 
 export type RunHandler = (
   request: vscode.TestRunRequest,
