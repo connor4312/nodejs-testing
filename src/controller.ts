@@ -5,12 +5,12 @@ import picomatch from "picomatch";
 import * as vscode from "vscode";
 import { coverageContext } from "./coverage";
 import { DisposableStore, MutableDisposable } from "./disposable";
+import { ExtensionConfig } from "./extension-config";
 import { last } from "./iterable";
 import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
-import { ExtensionConfig } from './extension-config';
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
 
@@ -174,7 +174,8 @@ export class Controller {
       return;
     }
 
-    const tree = parseSource(contents);
+    console.log(uri.fsPath);
+    const tree = parseSource(contents, uri.fsPath);
     if (!tree.length) {
       this.deleteFileTests(uri.toString());
       return;

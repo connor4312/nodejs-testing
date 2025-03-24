@@ -76,9 +76,10 @@ export interface IParsedNode {
   children: IParsedNode[];
 }
 
-export const parseSource = (text: string) => {
+export const parseSource = (text: string, fsPath?: string) => {
   const ast = parse(text, acornOptions);
 
+  // A list of tests to see if a function call is a "test"
   const idTests: ExtractTest[] = [];
 
   const stack: { node: Node; r: IParsedNode }[] = [];
@@ -86,7 +87,22 @@ export const parseSource = (text: string) => {
 
   traverse(ast as Node, {
     enter(node) {
-      if (node.type === C.ImportDeclaration && node.source.value === C.NodeTest) {
+      if (node.type === C.ImportDeclaration && node.source.value === "../utils") {
+        for (const spec of node.specifiers) {
+          switch (spec.type) {
+            case C.ImportNamespaceSpecifier:
+            case C.ImportDefaultSpecifier:
+              idTests.push(matchNamespaced(spec.local.name));
+              break;
+            case C.ImportSpecifier:
+              if (spec.imported.type === C.Identifier) {
+                console.log(`registering ${spec.imported.name} -> ${spec.local.name}`);
+                idTests.push(matchIdentified(spec.imported.name, spec.local.name));
+              }
+              break;
+          }
+        }
+      } else if (node.type === C.ImportDeclaration && node.source.value === C.NodeTest) {
         for (const spec of node.specifiers) {
           switch (spec.type) {
             case C.ImportNamespaceSpecifier:
