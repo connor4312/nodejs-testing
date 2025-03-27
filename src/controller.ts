@@ -5,12 +5,13 @@ import picomatch from "picomatch";
 import * as vscode from "vscode";
 import { coverageContext } from "./coverage";
 import { DisposableStore, MutableDisposable } from "./disposable";
+import { ExtensionConfig } from "./extension-config";
 import { last } from "./iterable";
 import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
-import { ExtensionConfig } from './extension-config';
+import type { TestFunctionSpecifierConfig } from "./test-function-specifier-config";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
 
@@ -61,6 +62,11 @@ export class Controller {
     }
   >();
 
+  /**
+   * The configuration which defines which functions should be treated as tests
+   */
+  private readonly testSpecifiers: TestFunctionSpecifierConfig[];
+
   /** Change emtiter used for testing, to pick up when the file watcher detects a chagne */
   public readonly onDidChange = this.didChangeEmitter.event;
   /** Handler for a normal test run */
@@ -78,7 +84,9 @@ export class Controller {
     include: string[],
     exclude: string[],
     extensionConfigs: ExtensionConfig[],
+    testSpecifiers: TestFunctionSpecifierConfig[],
   ) {
+    this.testSpecifiers = testSpecifiers;
     this.disposable.add(ctrl);
     this.disposable.add(runner);
     const extensions = extensionConfigs.flatMap((x) => x.extensions);
@@ -157,14 +165,17 @@ export class Controller {
     }
   }
 
+  /**
+   * Re-check this file for tests, and add them to the UI.
+   * Assumes that the URI has already passed `this.includeTest`
+   *
+   * @param folder the workspace folder this test file belongs to
+   * @param uri the URI of the file in question to reparse and check for tests
+   * @param contents the file contents of uri - to be used as an optimization
+   */
   private async _syncFile(uri: vscode.Uri, contents?: string) {
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
     contents ??= await fs.readFile(uri.fsPath, "utf8");
-
-    // cheap test for relevancy:
-    if (!contents.includes("node:test")) {
-      this.deleteFileTests(uri.toString());
-      return;
-    }
 
     // avoid re-parsing if the contents are the same (e.g. if a file is edited
     // and then saved.)
@@ -174,7 +185,7 @@ export class Controller {
       return;
     }
 
-    const tree = parseSource(contents);
+    const tree = parseSource(contents, folder, uri, this.testSpecifiers);
     if (!tree.length) {
       this.deleteFileTests(uri.toString());
       return;
@@ -224,7 +235,7 @@ export class Controller {
       return item;
     };
 
-    // We assume that all tests inside a top-leve describe/test are from the same
+    // We assume that all tests inside a top-level describe/test are from the same
     // source file. This is probably a good assumption. Likewise we assume that a single
     // a single describe/test is not split between different files.
     const newTestsInFile = new Map<string, vscode.TestItem>();
@@ -295,8 +306,8 @@ export class Controller {
       new vscode.RelativePattern(this.wf, `**/*`),
     ));
 
-    watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
-    watcher.onDidChange((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
+    watcher.onDidCreate((uri) => this.syncFile(uri));
+    watcher.onDidChange((uri) => this.syncFile(uri));
     watcher.onDidDelete((uri) => {
       const prefix = uri.toString();
       for (const key of this.testsInFiles.keys()) {

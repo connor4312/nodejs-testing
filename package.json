@@ -147,6 +147,52 @@
               }
             }
           },
+          "nodejs-testing.testSpecifiers": {
+            "type": "array",
+            "markdownDescription": "_Advanced_: A list of specifiers that indicate test function to search for:\nIt defaults to:\n\n```json\n[\n  {\n    \"import\": \"node:test\",\n    \"name\": [\"default\", \"it\", \"test\", \"describe\", \"suite\"]\n  }\n]\n```\n\nBut in case your test function is wrapped, you can specify it with a relative import:\nNOTE: relative imports must be prefixed with ./\n\n```json\n[\n  {\n    \"import\": \"./test/utils.js\",\n    \"name\": \"test\"\n  }\n]\n```\n",
+            "default": [
+              {
+                "import": "node:test",
+                "name": [
+                  "default",
+                  "it",
+                  "test",
+                  "describe",
+                  "suite"
+                ]
+              }
+            ],
+            "items": {
+              "type": "object",
+              "default": {
+                "import": "node:test",
+                "name": [
+                  "default",
+                  "it",
+                  "test",
+                  "describe",
+                  "suite"
+                ]
+              },
+              "required": [
+                "import",
+                "name"
+              ],
+              "properties": {
+                "import": {
+                  "type": "string",
+                  "markdownDescription": "A package specifier (i.e. node:test) or workspace-relative path beginning with ./ (like ./test/utils.js) that indicates where the 'test' function can be imported from in your codebase"
+                },
+                "name": {
+                  "type": "array",
+                  "markdownDescription": "A list of functions that are imported from `import` that should be treated as test functions",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
           "nodejs-testing.envFile": {
             "type": "string",
             "markdownDescription": "Absolute path to a file containing environment variable definitions.\n\nNote: template parameters like ${workspaceFolder} will be resolved.",

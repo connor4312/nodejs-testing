@@ -3,6 +3,7 @@ import { ConfigValue } from "./configValue";
 import { Controller } from "./controller";
 import { TestRunner } from "./runner";
 import { SourceMapStore } from "./source-map-store";
+import { defaultTestFunctionSpecifiers } from "./test-function-specifier-config";
 
 export async function activate(context: vscode.ExtensionContext) {
   const smStore = new SourceMapStore();
@@ -14,6 +15,8 @@ export async function activate(context: vscode.ExtensionContext) {
       parameters: [],
     },
   ]);
+
+  const testSpecifiers = new ConfigValue("testSpecifiers", defaultTestFunctionSpecifiers);
 
   const ctrls = new Map<vscode.WorkspaceFolder, Controller>();
   const refreshFolders = () => {
@@ -48,6 +51,7 @@ export async function activate(context: vscode.ExtensionContext) {
             includePattern.value,
             excludePatterns.value,
             extensions.value,
+            testSpecifiers.value,
           ),
         );
       }

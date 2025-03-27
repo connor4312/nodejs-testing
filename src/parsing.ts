@@ -1,7 +1,21 @@
 import type { Options } from "acorn";
 import { parse } from "acorn-loose";
 import * as evk from "eslint-visitor-keys";
-import { CallExpression, Expression, Node, SourceLocation, Super } from "estree";
+import {
+  CallExpression,
+  Expression,
+  Node,
+  SourceLocation,
+  Super,
+  type ImportDeclaration,
+} from "estree";
+import * as Path from "node:path";
+import * as vscode from "vscode";
+import {
+  defaultTestFunctionSpecifiers,
+  type TestFunctionSpecifierConfig,
+} from "./test-function-specifier-config";
+import { assertUnreachable } from "./utils";
 
 const enum C {
   ImportDeclaration = "ImportDeclaration",
@@ -76,30 +90,94 @@ export interface IParsedNode {
   children: IParsedNode[];
 }
 
-export const parseSource = (text: string) => {
+/**
+ * Look for test function imports in this AST node
+ *
+ * @param folder The workspace folder this file belongs to, used for relative path references to a custom test function
+ * @param fileUri The URI of the file we are extracting from
+ * @param testFunctions the tests function imports to check for
+ * @param node the ImportDelcaration to look for test imports
+ * @returns
+ */
+function importDeclarationExtractTests(
+  folder: vscode.WorkspaceFolder | undefined,
+  fileUri: vscode.Uri | undefined,
+  testFunctions: TestFunctionSpecifierConfig[],
+  node: ImportDeclaration,
+): ExtractTest[] {
+  const idTests: ExtractTest[] = [];
+  if (typeof node.source.value !== "string") {
+    return [];
+  }
+
+  let importValue = node.source.value;
+  if (node.source.value.startsWith("./") || node.source.value.startsWith("../")) {
+    if (!folder || !fileUri) {
+      console.warn(`Trying to match custom test function without specifying a folder or fileUri`);
+      return [];
+    }
+
+    // This is a relative import, we need to adjust the import value for matching purposes
+    const importRelativeToRoot = Path.relative(
+      folder.uri.fsPath,
+      Path.resolve(Path.dirname(fileUri.fsPath), node.source.value),
+    );
+
+    importValue = `./${importRelativeToRoot}`;
+  }
+
+  for (const specifier of testFunctions) {
+    if (specifier.import !== importValue) {
+      continue;
+    }
+
+    // Next check to see if the functions imported are tests functions
+    const validNames = new Set(
+      typeof specifier.name === "string" ? [specifier.name] : specifier.name,
+    );
+
+    for (const spec of node.specifiers) {
+      const specType = spec.type;
+      if (specType === C.ImportDefaultSpecifier || specType === C.ImportNamespaceSpecifier) {
+        if (validNames.has("default")) {
+          idTests.push(matchNamespaced(spec.local.name));
+        }
+      } else if (specType === C.ImportSpecifier) {
+        if (spec.imported.type === C.Identifier) {
+          if (validNames.has(spec.imported.name)) {
+            idTests.push(matchIdentified(spec.imported.name, spec.local.name));
+          }
+        }
+      } else {
+        assertUnreachable(specType, `${specType} was unhandled`);
+      }
+    }
+  }
+
+  return idTests;
+}
+
+export const parseSource = (
+  text: string,
+  folder?: vscode.WorkspaceFolder,
+  fileUri?: vscode.Uri,
+  testFunctions?: TestFunctionSpecifierConfig[],
+): IParsedNode[] => {
   const ast = parse(text, acornOptions);
+  const testMatchers = testFunctions ?? defaultTestFunctionSpecifiers;
 
   const idTests: ExtractTest[] = [];
 
+  // Since tests can be nested inside of each other, for example a test suite.
+  // We keep track of the test declarations in a tree.
   const stack: { node: Node; r: IParsedNode }[] = [];
   stack.push({ node: undefined, r: { children: [] } } as any);
 
   traverse(ast as Node, {
     enter(node) {
-      if (node.type === C.ImportDeclaration && node.source.value === C.NodeTest) {
-        for (const spec of node.specifiers) {
-          switch (spec.type) {
-            case C.ImportNamespaceSpecifier:
-            case C.ImportDefaultSpecifier:
-              idTests.push(matchNamespaced(spec.local.name));
-              break;
-            case C.ImportSpecifier:
-              if (spec.imported.type === C.Identifier) {
-                idTests.push(matchIdentified(spec.imported.name, spec.local.name));
-              }
-              break;
-          }
-        }
+      if (node.type === C.ImportDeclaration) {
+        const matchers = importDeclarationExtractTests(folder, fileUri, testMatchers, node);
+        idTests.push(...matchers);
       } else if (
         node.type === C.VariableDeclarator &&
         node.init?.type === C.CallExpression &&
@@ -137,7 +215,13 @@ export const parseSource = (text: string) => {
               fn,
               name,
             };
+
+            // We have encountered a test function, record it in the tree.
             stack[stack.length - 1].r.children.push(child);
+
+            // This test function is potentially a "parent" for subtests, so
+            // keep it as the "current leaf" of the stack, so future sub-tests
+            // can be associated with it
             stack.push({ node, r: child });
             break;
           }
@@ -145,6 +229,9 @@ export const parseSource = (text: string) => {
       }
     },
     leave(node) {
+      // We are exiting a node that was potentially a test function.  If it was,
+      // we need to pop it of the stack, since there are no more subtests to be
+      // associated with it.
       if (stack[stack.length - 1].node === node) {
         stack.pop();
       }
