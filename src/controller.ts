@@ -190,7 +190,7 @@ export class Controller {
       return;
     }
 
-    const tree = parseSource(contents, this.wf, uri, this.testSpecifiers);
+    const tree = parseSource(contents, this.wf.uri.path, uri.path, this.testSpecifiers);
     if (!tree.length) {
       this.deleteFileTests(uri.toString());
       return;

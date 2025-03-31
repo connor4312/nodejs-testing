@@ -9,8 +9,7 @@ import {
   Super,
   type ImportDeclaration,
 } from "estree";
-import * as Path from "node:path";
-import * as vscode from "vscode";
+import * as PosixPath from "node:path/posix";
 import {
   defaultTestFunctionSpecifiers,
   type TestFunctionSpecifierConfig,
@@ -93,15 +92,15 @@ export interface IParsedNode {
 /**
  * Look for test function imports in this AST node
  *
- * @param folder The workspace folder this file belongs to, used for relative path references to a custom test function
- * @param fileUri The URI of the file we are extracting from
+ * @param workspaceFolderUriPath The path component of the workspace folder URI this file belongs to, used for relative path references to a custom test function
+ * @param fileUriPath The path component of the URI of the file we are extracting tests from
  * @param testFunctions the tests function imports to check for
  * @param node the ImportDelcaration to look for test imports
  * @returns
  */
 function importDeclarationExtractTests(
-  folder: vscode.WorkspaceFolder | undefined,
-  fileUri: vscode.Uri | undefined,
+  workspaceFolderUriPath: string,
+  fileUriPath: string,
   testFunctions: TestFunctionSpecifierConfig[],
   node: ImportDeclaration,
 ): ExtractTest[] {
@@ -112,15 +111,10 @@ function importDeclarationExtractTests(
 
   let importValue = node.source.value;
   if (node.source.value.startsWith("./") || node.source.value.startsWith("../")) {
-    if (!folder || !fileUri) {
-      console.warn(`Trying to match custom test function without specifying a folder or fileUri`);
-      return [];
-    }
-
     // This is a relative import, we need to adjust the import value for matching purposes
-    const importRelativeToRoot = Path.relative(
-      folder.uri.fsPath,
-      Path.resolve(Path.dirname(fileUri.fsPath), node.source.value),
+    const importRelativeToRoot = PosixPath.relative(
+      workspaceFolderUriPath,
+      PosixPath.resolve(PosixPath.dirname(fileUriPath), node.source.value),
     );
 
     importValue = `./${importRelativeToRoot}`;
@@ -138,10 +132,14 @@ function importDeclarationExtractTests(
 
     for (const spec of node.specifiers) {
       const specType = spec.type;
-      if (specType === C.ImportDefaultSpecifier || specType === C.ImportNamespaceSpecifier) {
+      if (specType === C.ImportDefaultSpecifier) {
+        // The name "default" is special, it is used when you are trying to
+        // target a default export from a file in your workspace
         if (validNames.has("default")) {
           idTests.push(matchNamespaced(spec.local.name));
         }
+      } else if (specType === C.ImportNamespaceSpecifier) {
+        idTests.push(matchNamespaced(spec.local.name));
       } else if (specType === C.ImportSpecifier) {
         if (spec.imported.type === C.Identifier) {
           if (validNames.has(spec.imported.name)) {
@@ -157,11 +155,21 @@ function importDeclarationExtractTests(
   return idTests;
 }
 
+/**
+ * Parse the source code in `text` to identify any tests that match `testFunctions`
+ *
+ * @param text the contents of the file we want to parse
+ * @param workspaceFolderUriPath the path component of the URI of the workspace this file exists.
+ *        If you have a `const folder: vscode.WorkspaceFolder`, then use folder.uri.path
+ * @param fileUriPath the path component of the URI of the file we are checking for tests
+ * @param testFunctions the configured test specifiers for the kinds of tests we are looking for
+ * @returns A hierarchical tree of tests that exist in this file
+ */
 export const parseSource = (
   text: string,
-  folder?: vscode.WorkspaceFolder,
-  fileUri?: vscode.Uri,
-  testFunctions?: TestFunctionSpecifierConfig[],
+  workspaceFolderUriPath: string,
+  fileUriPath: string,
+  testFunctions: TestFunctionSpecifierConfig[],
 ): IParsedNode[] => {
   const ast = parse(text, acornOptions);
   const testMatchers = testFunctions ?? defaultTestFunctionSpecifiers;
@@ -176,7 +184,12 @@ export const parseSource = (
   traverse(ast as Node, {
     enter(node) {
       if (node.type === C.ImportDeclaration) {
-        const matchers = importDeclarationExtractTests(folder, fileUri, testMatchers, node);
+        const matchers = importDeclarationExtractTests(
+          workspaceFolderUriPath,
+          fileUriPath,
+          testMatchers,
+          node,
+        );
         idTests.push(...matchers);
       } else if (
         node.type === C.VariableDeclarator &&
