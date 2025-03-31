@@ -11,7 +11,10 @@ import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
-import type { TestFunctionSpecifierConfig } from "./test-function-specifier-config";
+import {
+  fileMightHaveTests,
+  type TestFunctionSpecifierConfig,
+} from "./test-function-specifier-config";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
 
@@ -19,7 +22,7 @@ function jsExtensions(extensions: string[]) {
   let jsExtensions = "";
 
   if (extensions == null || extensions.length == 0) {
-    throw "this case never accurs";
+    throw "this case never occurs";
   } else if (extensions.length == 1) {
     jsExtensions = `.${extensions[0]}`;
   } else {
@@ -62,12 +65,7 @@ export class Controller {
     }
   >();
 
-  /**
-   * The configuration which defines which functions should be treated as tests
-   */
-  private readonly testSpecifiers: TestFunctionSpecifierConfig[];
-
-  /** Change emtiter used for testing, to pick up when the file watcher detects a chagne */
+  /** Change emtiter used for testing, to pick up when the file watcher detects a change */
   public readonly onDidChange = this.didChangeEmitter.event;
   /** Handler for a normal test run */
   public readonly runHandler: RunHandler;
@@ -84,9 +82,11 @@ export class Controller {
     include: string[],
     exclude: string[],
     extensionConfigs: ExtensionConfig[],
-    testSpecifiers: TestFunctionSpecifierConfig[],
+    /**
+     * The configuration which defines which functions should be treated as tests
+     */
+    private readonly testSpecifiers: TestFunctionSpecifierConfig[],
   ) {
-    this.testSpecifiers = testSpecifiers;
     this.disposable.add(ctrl);
     this.disposable.add(runner);
     const extensions = extensionConfigs.flatMap((x) => x.extensions);
@@ -174,8 +174,13 @@ export class Controller {
    * @param contents the file contents of uri - to be used as an optimization
    */
   private async _syncFile(uri: vscode.Uri, contents?: string) {
-    const folder = vscode.workspace.getWorkspaceFolder(uri);
     contents ??= await fs.readFile(uri.fsPath, "utf8");
+
+    // If this file definitely doesn't have any tests, we can skip any expensive processing on it
+    if (!fileMightHaveTests(this.testSpecifiers, contents)) {
+      this.deleteFileTests(uri.toString());
+      return;
+    }
 
     // avoid re-parsing if the contents are the same (e.g. if a file is edited
     // and then saved.)
@@ -185,7 +190,7 @@ export class Controller {
       return;
     }
 
-    const tree = parseSource(contents, folder, uri, this.testSpecifiers);
+    const tree = parseSource(contents, this.wf, uri, this.testSpecifiers);
     if (!tree.length) {
       this.deleteFileTests(uri.toString());
       return;

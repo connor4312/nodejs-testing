@@ -106,6 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
     includePattern.onChange(refreshFolders),
     excludePatterns.onChange(refreshFolders),
     extensions.onChange(refreshFolders),
+    testSpecifiers.onChange(refreshFolders),
     new vscode.Disposable(() => ctrls.forEach((c) => c.dispose())),
   );
 
