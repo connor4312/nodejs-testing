@@ -99,16 +99,33 @@ export class TestRunner implements vscode.Disposable {
       const concurrency = this.concurrency.value || cpus().length;
       const getTestByPath = (path: string[]): vscode.TestItem | undefined => {
         const uri = vscode.Uri.parse(path[0]);
-        let item = last(getContainingItemsForFile(wf, ctrl, uri))!.item;
-        if (!item) {
+        let fileItem = last(getContainingItemsForFile(wf, ctrl, uri))!.item;
+        if (!fileItem) {
           return undefined;
         }
 
-        for (let i = 1; item && i < path.length; i++) {
-          item = item.children.get(path[i]);
+        let item: vscode.TestItem;
+        const searchPath = (test: vscode.TestItem, pathIndex: number) => {
+          let id = path[pathIndex];
+          let nId = 0;
+          let child;
+          do {
+            child = test.children.get(id);
+            if (child && path[pathIndex + 1] === undefined) {
+              item = child;
+            }
+            else {
+              child && searchPath(child, pathIndex + 1);
+            }
+
+            id = `${path[pathIndex]}#${nId++}`;
+          }
+          while (child)
         }
 
-        return item;
+        searchPath(fileItem, 1);
+
+        return item!;
       };
 
       // inline source maps read from the runtime. These will both be definitive
@@ -422,6 +439,23 @@ export class TestRunner implements vscode.Disposable {
     const modernNamePatterns = nodeMajorVersion >= 22;
 
     const addTestsToFileRecord = (record: IIncludeFile, queue: vscode.TestItem[]) => {
+      //merge queue-items with the same (extended) id
+      for (let i = 0; i < queue.length; i++) {
+        let nId = 0;
+        for (let j = 0; j < queue.length; j++) {
+          if (i == j) continue;
+
+          if (`${queue[i].id}#${nId++}` === queue[j].id) {
+            for (const [, child] of queue[j].children) {
+              queue[i].children.add(child);
+            }
+            queue.splice(j, 1);
+            j--;
+            if (i > j) i--;
+          }
+        }
+      }
+
       record.include ??= new Set();
 
       while (queue.length) {
