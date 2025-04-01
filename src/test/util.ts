@@ -39,8 +39,8 @@ export const getNodeVersion = () => {
 type TestTreeExpectation = [string, TestTreeExpectation[]?];
 
 const buildTreeExpectation = (entry: TestTreeExpectation, c: vscode.TestItemCollection) => {
-  for (const [id, { children }] of c) {
-    const node: TestTreeExpectation = [id];
+  for (const [, { children, label }] of c) {
+    const node: TestTreeExpectation = [label];
     buildTreeExpectation(node, children);
     if (entry.length === 1) {
       entry[1] = [node];
@@ -112,9 +112,9 @@ export class FakeTestRun implements vscode.TestRun {
   public expectStates(expected: { [test: string]: TestState[] }) {
     const actual: { [test: string]: TestState[] } = {};
     for (const { test, state } of this.states) {
-      let key = test.id;
+      let key = test.label;
       for (let p = test.parent; p; p = p.parent) {
-        key = `${p.id}/${key}`;
+        key = `${p.label}/${key}`;
       }
       (actual[key] ??= []).push(state);
     }
@@ -171,7 +171,7 @@ export class FakeTestRun implements vscode.TestRun {
   end(): void {
     this.ended = true;
   }
-  addCoverage(fileCoverage: vscode.FileCoverage): void {}
+  addCoverage(fileCoverage: vscode.FileCoverage): void { }
   onDidDispose = new vscode.EventEmitter<void>().event;
   //#endregion
 }

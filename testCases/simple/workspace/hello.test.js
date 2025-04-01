@@ -6,7 +6,9 @@ describe("math", () => {
     console.log("some log");
     strictEqual(1 + 1, 2);
   });
+});
 
+describe("math", () => {
   it(`subtraction`, async () => {
     process.stdout.write("another log");
     strictEqual(1 - 1, 0);
