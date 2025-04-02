@@ -163,7 +163,7 @@ const node_test_1 = require("node:test");
   });
 });
 
-describe("extract with custom test specifiers in ESM code", () => {
+describe("extract tests with custom specifiers", () => {
   it("extracts default import tests", () => {
     const contents = `
 import nt from "./utils";

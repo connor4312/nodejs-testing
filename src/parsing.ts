@@ -175,6 +175,21 @@ function importDeclarationExtractTests(
   return idTests;
 }
 
+/**
+ * Look for test imports in a `require` call
+ * For example:
+ * ```
+ * const test = require("node:test");
+ * const { test } = require("node:test");
+ * const { test: renamedTest } = require("node:test");
+ * ```
+ *
+ * @param workspaceFolderUriPath The path component of the workspace folder URI this file belongs to, used for relative path references to a custom test function
+ * @param fileUriPath The path component of the URI of the file we are extracting tests from
+ * @param testFunctions the tests function imports to check for
+ * @param node the VariableDeclarator to look for
+ * @returns
+ */
 function requireCallExtractTests(
   workspaceFolderUriPath: string,
   fileUriPath: string,

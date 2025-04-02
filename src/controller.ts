@@ -169,7 +169,6 @@ export class Controller {
    * Re-check this file for tests, and add them to the UI.
    * Assumes that the URI has already passed `this.includeTest`
    *
-   * @param folder the workspace folder this test file belongs to
    * @param uri the URI of the file in question to reparse and check for tests
    * @param contents the file contents of uri - to be used as an optimization
    */
