@@ -5,12 +5,16 @@ import picomatch from "picomatch";
 import * as vscode from "vscode";
 import { coverageContext } from "./coverage";
 import { DisposableStore, MutableDisposable } from "./disposable";
+import { ExtensionConfig } from "./extension-config";
 import { last } from "./iterable";
 import { ICreateOpts, ItemType, getContainingItemsForFile, testMetadata } from "./metadata";
 import { IParsedNode, parseSource } from "./parsing";
 import { RunHandler, TestRunner } from "./runner";
 import { ISourceMapMaintainer, SourceMapStore } from "./source-map-store";
-import { ExtensionConfig } from './extension-config';
+import {
+  fileMightHaveTests,
+  type TestFunctionSpecifierConfig,
+} from "./test-function-specifier-config";
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("nodejs-testing-dupes");
 
@@ -18,7 +22,7 @@ function jsExtensions(extensions: string[]) {
   let jsExtensions = "";
 
   if (extensions == null || extensions.length == 0) {
-    throw "this case never accurs";
+    throw "this case never occurs";
   } else if (extensions.length == 1) {
     jsExtensions = `.${extensions[0]}`;
   } else {
@@ -61,7 +65,7 @@ export class Controller {
     }
   >();
 
-  /** Change emtiter used for testing, to pick up when the file watcher detects a chagne */
+  /** Change emitter used for testing, to pick up when the file watcher detects a change */
   public readonly onDidChange = this.didChangeEmitter.event;
   /** Handler for a normal test run */
   public readonly runHandler: RunHandler;
@@ -78,6 +82,10 @@ export class Controller {
     include: string[],
     exclude: string[],
     extensionConfigs: ExtensionConfig[],
+    /**
+     * The configuration which defines which functions should be treated as tests
+     */
+    private readonly testSpecifiers: TestFunctionSpecifierConfig[],
   ) {
     this.disposable.add(ctrl);
     this.disposable.add(runner);
@@ -157,11 +165,18 @@ export class Controller {
     }
   }
 
+  /**
+   * Re-check this file for tests, and add them to the UI.
+   * Assumes that the URI has already passed `this.includeTest`
+   *
+   * @param uri the URI of the file in question to reparse and check for tests
+   * @param contents the file contents of uri - to be used as an optimization
+   */
   private async _syncFile(uri: vscode.Uri, contents?: string) {
     contents ??= await fs.readFile(uri.fsPath, "utf8");
 
-    // cheap test for relevancy:
-    if (!contents.includes("node:test")) {
+    // If this file definitely doesn't have any tests, we can skip any expensive processing on it
+    if (!fileMightHaveTests(this.testSpecifiers, contents)) {
       this.deleteFileTests(uri.toString());
       return;
     }
@@ -174,7 +189,7 @@ export class Controller {
       return;
     }
 
-    const tree = parseSource(contents);
+    const tree = parseSource(contents, this.wf.uri.path, uri.path, this.testSpecifiers);
     if (!tree.length) {
       this.deleteFileTests(uri.toString());
       return;
@@ -224,7 +239,7 @@ export class Controller {
       return item;
     };
 
-    // We assume that all tests inside a top-leve describe/test are from the same
+    // We assume that all tests inside a top-level describe/test are from the same
     // source file. This is probably a good assumption. Likewise we assume that a single
     // a single describe/test is not split between different files.
     const newTestsInFile = new Map<string, vscode.TestItem>();
@@ -295,8 +310,8 @@ export class Controller {
       new vscode.RelativePattern(this.wf, `**/*`),
     ));
 
-    watcher.onDidCreate((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
-    watcher.onDidChange((uri) => this.includeTest(uri.fsPath) && this._syncFile(uri));
+    watcher.onDidCreate((uri) => this.syncFile(uri));
+    watcher.onDidChange((uri) => this.syncFile(uri));
     watcher.onDidDelete((uri) => {
       const prefix = uri.toString();
       for (const key of this.testsInFiles.keys()) {
