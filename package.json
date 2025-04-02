@@ -30,6 +30,19 @@
             "default": "node",
             "description": "Path to the Node.js binary used to run tests"
           },
+          "nodejs-testing.isolation": {
+            "description": "Add the --test-isolation=? flag if supported",
+            "default": "process",
+            "enum": [
+              "process",
+              "none"
+            ]
+          },
+          "nodejs-testing.forceExit": {
+            "type": "boolean",
+            "default": false,
+            "description": "Add the --test-force-exit flag if supported"
+          },
           "nodejs-testing.nodejsParameters": {
             "type": "array",
             "deprecationMessage": "Use nodejs-testing.extensions instead!",

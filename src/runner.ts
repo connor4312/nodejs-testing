@@ -48,6 +48,8 @@ export class TestRunner implements vscode.Disposable {
   private readonly disposables = new DisposableStore();
 
   private readonly concurrency: ConfigValue<number>;
+  private readonly isolation: ConfigValue<string>;
+  private readonly forceExit: ConfigValue<boolean>;
   private readonly nodejsPath: ConfigValue<string>;
   private readonly verbose: ConfigValue<boolean>;
   private readonly style: ConfigValue<Style>;
@@ -65,6 +67,9 @@ export class TestRunner implements vscode.Disposable {
   ) {
     this.workerPath = join(extensionDir, "out", "runner-worker.js");
     this.concurrency = this.disposables.add(new ConfigValue("concurrency", 0, folder));
+    this.isolation = this.disposables.add(new ConfigValue("isolation", "process", folder));
+    this.forceExit = this.disposables.add(new ConfigValue("forceExit", false, folder));
+
     this.nodejsPath = this.disposables.add(new ConfigValue("nodejsPath", "node", folder));
     this.verbose = this.disposables.add(new ConfigValue("verbose", false, folder));
     this.style = this.disposables.add(new ConfigValue("style", Style.Spec, folder));
@@ -131,6 +136,8 @@ export class TestRunner implements vscode.Disposable {
           ? join(tmpdir(), `nodejs-coverage-${randomUUID()}`)
           : undefined;
         const extensions = this.extensions.value;
+        const isolation = this.isolation.value;
+        const forceExit = this.forceExit.value;
         const envFile = this.envFile.value
           ? await fs.readFile(replaceVariables(this.envFile.value))
           : null;
@@ -298,6 +305,8 @@ export class TestRunner implements vscode.Disposable {
                 await reg.client.start({
                   files,
                   concurrency,
+                  isolation,
+                  forceExit,
                   extensions,
                   regenerateSnapshots: TestRunner.regenerateSnapshotsOnNextRun,
                   verbose: this.verbose.value,

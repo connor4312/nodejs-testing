@@ -42,6 +42,8 @@ const ignoredLines = [C.ForHelpPrefix, C.WaitingForDisconnect, C.AttachedPrefix,
 
 const start: (typeof contract)["TClientHandler"]["start"] = async ({
   concurrency,
+  isolation,
+  forceExit,
   files,
   extensions,
   verbose,
@@ -53,7 +55,17 @@ const start: (typeof contract)["TClientHandler"]["start"] = async ({
   for (let i = 0; i < concurrency && i < files.length; i++) {
     const prefix = colors[i % colors.length](`worker${i + 1}> `);
     todo.push(
-      doWork(prefix, files, extensions, verbose, extraEnv, coverageDir, regenerateSnapshots),
+      doWork(
+        prefix,
+        files,
+        extensions,
+        isolation,
+        forceExit,
+        verbose,
+        extraEnv,
+        coverageDir,
+        regenerateSnapshots,
+      ),
     );
   }
   await Promise.all(todo);
@@ -99,6 +111,8 @@ async function doWork(
   prefix: string,
   queue: ITestRunFile[],
   extensions: ExtensionConfig[],
+  isolation: string,
+  forceExit: boolean,
   verbose: boolean,
   extraEnv: Record<string, string>,
   coverageDir: string | undefined,
@@ -123,6 +137,19 @@ async function doWork(
       if (nodeVersion.has(Capability.ExperimentalSnapshots)) {
         args.push("--experimental-test-snapshots");
       }
+      if (nodeVersion.has(Capability.TestForceExit) && forceExit) {
+        args.push("--test-force-exit");
+      }
+      if (nodeVersion.has(Capability.TestIsolation)) {
+        // Don't just splat any old value into the command line
+        // whitelist them to prevent a shell injection attack
+        if (isolation === "process" || isolation === "none") {
+          args.push(`--test-isolation=${isolation}`);
+        } else {
+          console.warn(`Unknown isolation value: ${isolation}`);
+        }
+      }
+
       if (regenerateSnapshots) {
         args.push("--test-update-snapshots");
       }

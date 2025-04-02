@@ -105,6 +105,8 @@ export const contract = makeContract({
             parameters: s.sArrayOf(s.sString()),
           }),
         ),
+        isolation: s.sString(),
+        forceExit: s.sBoolean(),
         extraEnv: s.sMap(s.sString()),
       }),
       result: s.sNull(),

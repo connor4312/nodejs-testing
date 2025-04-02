@@ -1,5 +1,7 @@
 export const enum Capability {
   ExperimentalSnapshots = 1 << 0,
+  TestForceExit = 1 << 1,
+  TestIsolation = 1 << 2,
 }
 
 export class NodeVersion {
@@ -15,6 +17,19 @@ export class NodeVersion {
     // to stable 24 then then should be updated to lt(new Semver(25, 0, 0))
     if (semver.gte(new Semver(22, 3, 0)) && semver.lt(new Semver(24, 0, 0))) {
       this.capabilities |= Capability.ExperimentalSnapshots;
+    }
+
+    // --test-force-exit was added in v22.0.0, and backported in v20.10.0
+    if (
+      semver.gte(new Semver(22, 0, 0)) ||
+      (semver.major === 20 && semver.gte(new Semver(20, 10, 0)))
+    ) {
+      this.capabilities |= Capability.TestForceExit;
+    }
+
+    // --test-isolation was added in v22.0.0, and backported in v20.10.0
+    if (semver.gte(new Semver(22, 8, 0))) {
+      this.capabilities |= Capability.TestIsolation;
     }
   }
 
