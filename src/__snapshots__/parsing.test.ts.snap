@@ -669,3 +669,309 @@ exports[`extract > works with string literals 1`] = `
   },
 ]
 `;
+
+exports[`extract with custom test specifiers in ESM code > extracts default import tests 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "test",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 8,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 6,
+          },
+        },
+        "name": "nested test",
+      },
+    ],
+    "fn": "test",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 9,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 4,
+      },
+    },
+    "name": "default import test",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in ESM code > extracts named import tests 1`] = `
+[
+  {
+    "children": [],
+    "fn": "wrappedTest",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 6,
+        "line": 4,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 2,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in ESM code > extracts renamed named import test 1`] = `
+[
+  {
+    "children": [],
+    "fn": "wrappedTest",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 6,
+        "line": 4,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 2,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in ESM code > extracts renamed named import tests 1`] = `
+[
+  {
+    "children": [],
+    "fn": "wrappedTest",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 6,
+        "line": 4,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 2,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in ESM code > extracts star import tests 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "test",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 8,
+            "line": 7,
+          },
+          "start": Position {
+            "column": 6,
+            "line": 5,
+          },
+        },
+        "name": "subtest",
+      },
+    ],
+    "fn": "test",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 6,
+        "line": 8,
+      },
+      "start": Position {
+        "column": 4,
+        "line": 2,
+      },
+    },
+    "name": "addition",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in commonjs code > extracts aliased require 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 7,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 5,
+          },
+        },
+        "name": "nested test",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 8,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 3,
+      },
+    },
+    "name": "destructured test",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in commonjs code > extracts default require tests 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "test",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 7,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 5,
+          },
+        },
+        "name": "nested test",
+      },
+    ],
+    "fn": "test",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 8,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 3,
+      },
+    },
+    "name": "default import test",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in commonjs code > extracts destructed require 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 4,
+            "line": 7,
+          },
+          "start": Position {
+            "column": 2,
+            "line": 5,
+          },
+        },
+        "name": "nested test",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 8,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 3,
+      },
+    },
+    "name": "destructured test",
+  },
+]
+`;
+
+exports[`extract with custom test specifiers in commonjs code > extracts ts import mangled 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 8,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 6,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 11,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 9,
+          },
+        },
+        "name": "addition",
+      },
+      {
+        "children": [],
+        "fn": "it",
+        "location": SourceLocation {
+          "end": Position {
+            "column": 6,
+            "line": 14,
+          },
+          "start": Position {
+            "column": 4,
+            "line": 12,
+          },
+        },
+        "name": "subtraction",
+      },
+    ],
+    "fn": "describe",
+    "location": SourceLocation {
+      "end": Position {
+        "column": 2,
+        "line": 15,
+      },
+      "start": Position {
+        "column": 0,
+        "line": 5,
+      },
+    },
+    "name": "math",
+  },
+]
+`;

@@ -65,7 +65,7 @@ export class Controller {
     }
   >();
 
-  /** Change emtiter used for testing, to pick up when the file watcher detects a change */
+  /** Change emitter used for testing, to pick up when the file watcher detects a change */
   public readonly onDidChange = this.didChangeEmitter.event;
   /** Handler for a normal test run */
   public readonly runHandler: RunHandler;

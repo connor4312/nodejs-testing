@@ -1,4 +1,4 @@
-import * as Path from "node:path";
+import * as PathPosix from "node:path/posix";
 
 /**
  * A declarative way to target a function call either imported from a package,
@@ -37,8 +37,7 @@ function singleFileMightHaveTests(
     // ../functions/utils.ts
     // etc.
     // We look for the extension-less basename of the test-defining file in the test-
-    const name = Path.basename(testSpec.import, Path.extname(testSpec.import));
-    return contents.includes(name);
+    return contents.includes(PathPosix.parse(testSpec.import).name);
   }
 
   // This is a test function imported from a package

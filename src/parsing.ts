@@ -8,6 +8,7 @@ import {
   SourceLocation,
   Super,
   type ImportDeclaration,
+  type VariableDeclarator,
 } from "estree";
 import * as PosixPath from "node:path/posix";
 import {
@@ -90,12 +91,36 @@ export interface IParsedNode {
 }
 
 /**
- * Look for test function imports in this AST node
+ * Resolve the import of `importString` from the file at `fileUriPath` relative to the workspace root.
+ *
+ * If the `importString` refers a package it remains unchanged.
+ */
+function importRelativeToWorkspaceRoot(
+  workspaceFolderUriPath: string,
+  fileUriPath: string,
+  importString: string,
+) {
+  let importValue = importString;
+  if (importString.startsWith("./") || importString.startsWith("../")) {
+    // This is a relative import, we need to adjust the import value for matching purposes
+    const importRelativeToRoot = PosixPath.relative(
+      workspaceFolderUriPath,
+      PosixPath.resolve(PosixPath.dirname(fileUriPath), importString),
+    );
+
+    importValue = `./${importRelativeToRoot}`;
+  }
+
+  return importValue;
+}
+
+/**
+ * Look for test ESM imports in this AST node
  *
  * @param workspaceFolderUriPath The path component of the workspace folder URI this file belongs to, used for relative path references to a custom test function
  * @param fileUriPath The path component of the URI of the file we are extracting tests from
  * @param testFunctions the tests function imports to check for
- * @param node the ImportDelcaration to look for test imports
+ * @param node the ImportDeclaration to look for test imports
  * @returns
  */
 function importDeclarationExtractTests(
@@ -106,22 +131,17 @@ function importDeclarationExtractTests(
 ): ExtractTest[] {
   const idTests: ExtractTest[] = [];
   if (typeof node.source.value !== "string") {
-    return [];
+    return idTests;
   }
 
-  let importValue = node.source.value;
-  if (node.source.value.startsWith("./") || node.source.value.startsWith("../")) {
-    // This is a relative import, we need to adjust the import value for matching purposes
-    const importRelativeToRoot = PosixPath.relative(
-      workspaceFolderUriPath,
-      PosixPath.resolve(PosixPath.dirname(fileUriPath), node.source.value),
-    );
-
-    importValue = `./${importRelativeToRoot}`;
-  }
+  const fromRootImport = importRelativeToWorkspaceRoot(
+    workspaceFolderUriPath,
+    fileUriPath,
+    node.source.value,
+  );
 
   for (const specifier of testFunctions) {
-    if (specifier.import !== importValue) {
+    if (specifier.import !== fromRootImport) {
       continue;
     }
 
@@ -148,6 +168,60 @@ function importDeclarationExtractTests(
         }
       } else {
         assertUnreachable(specType, `${specType} was unhandled`);
+      }
+    }
+  }
+
+  return idTests;
+}
+
+function requireCallExtractTests(
+  workspaceFolderUriPath: string,
+  fileUriPath: string,
+  testFunctions: TestFunctionSpecifierConfig[],
+  node: VariableDeclarator,
+) {
+  const idTests: ExtractTest[] = [];
+  if (node.init?.type !== C.CallExpression) {
+    return idTests;
+  }
+
+  const firstArg = getStringish(node.init.arguments[0]);
+  if (!firstArg) {
+    return idTests;
+  }
+
+  const fromRootImport = importRelativeToWorkspaceRoot(
+    workspaceFolderUriPath,
+    fileUriPath,
+    firstArg,
+  );
+
+  for (const specifier of testFunctions) {
+    if (specifier.import !== fromRootImport) {
+      continue;
+    }
+
+    if (node.id.type === C.Identifier) {
+      idTests.push(matchNamespaced(node.id.name));
+      continue;
+    }
+
+    // Next check to see if the functions imported are tests functions
+    const validNames = new Set(
+      typeof specifier.name === "string" ? [specifier.name] : specifier.name,
+    );
+
+    if (node.id.type === C.ObjectPattern) {
+      for (const prop of node.id.properties) {
+        if (
+          prop.type === C.Property &&
+          prop.key.type === C.Identifier &&
+          prop.value.type === C.Identifier &&
+          validNames.has(prop.key.name)
+        ) {
+          idTests.push(matchIdentified(prop.key.name, prop.value.name));
+        }
       }
     }
   }
@@ -197,22 +271,13 @@ export const parseSource = (
         node.init.callee.type === C.Identifier &&
         node.init.callee.name === "require"
       ) {
-        const firstArg = getStringish(node.init.arguments[0]);
-        if (firstArg === C.NodeTest) {
-          if (node.id.type === C.ObjectPattern) {
-            for (const prop of node.id.properties) {
-              if (
-                prop.type === C.Property &&
-                prop.key.type === C.Identifier &&
-                prop.value.type === C.Identifier
-              ) {
-                idTests.push(matchIdentified(prop.key.name, prop.value.name));
-              }
-            }
-          } else if (node.id.type === C.Identifier) {
-            idTests.push(matchNamespaced(node.id.name));
-          }
-        }
+        const matchers = requireCallExtractTests(
+          workspaceFolderUriPath,
+          fileUriPath,
+          testMatchers,
+          node,
+        );
+        idTests.push(...matchers);
       } else if (node.type === C.CallExpression) {
         const name = getStringish(node.arguments[0]);
         if (name === undefined) {
