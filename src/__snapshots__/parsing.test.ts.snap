@@ -670,7 +670,7 @@ exports[`extract > works with string literals 1`] = `
 ]
 `;
 
-exports[`extract with custom test specifiers in ESM code > extracts default import tests 1`] = `
+exports[`extract tests with custom specifiers > extracts default import tests 1`] = `
 [
   {
     "children": [
@@ -706,7 +706,7 @@ exports[`extract with custom test specifiers in ESM code > extracts default impo
 ]
 `;
 
-exports[`extract with custom test specifiers in ESM code > extracts named import tests 1`] = `
+exports[`extract tests with custom specifiers > extracts named import tests 1`] = `
 [
   {
     "children": [],
@@ -726,7 +726,7 @@ exports[`extract with custom test specifiers in ESM code > extracts named import
 ]
 `;
 
-exports[`extract with custom test specifiers in ESM code > extracts renamed named import test 1`] = `
+exports[`extract tests with custom specifiers > extracts renamed named import test 1`] = `
 [
   {
     "children": [],
@@ -746,7 +746,7 @@ exports[`extract with custom test specifiers in ESM code > extracts renamed name
 ]
 `;
 
-exports[`extract with custom test specifiers in ESM code > extracts renamed named import tests 1`] = `
+exports[`extract tests with custom specifiers > extracts renamed named import tests 1`] = `
 [
   {
     "children": [],
@@ -766,13 +766,13 @@ exports[`extract with custom test specifiers in ESM code > extracts renamed name
 ]
 `;
 
-exports[`extract with custom test specifiers in ESM code > extracts star import tests 1`] = `
+exports[`extract tests with custom specifiers > extracts star import tests 1`] = `
 [
   {
     "children": [
       {
         "children": [],
-        "fn": "test",
+        "fn": "specialTest",
         "location": SourceLocation {
           "end": Position {
             "column": 8,
@@ -786,7 +786,7 @@ exports[`extract with custom test specifiers in ESM code > extracts star import 
         "name": "subtest",
       },
     ],
-    "fn": "test",
+    "fn": "specialTest",
     "location": SourceLocation {
       "end": Position {
         "column": 6,

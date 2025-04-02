@@ -188,16 +188,16 @@ nt("default import test", () => {
 
   it("extracts star import tests", () => {
     const contents = `import  * as Utils from "./utils";
-    Utils.test("addition", () => {
+    Utils.specialTest("addition", () => {
       strictEqual(1 + 1, 2);
 
-      Utils.test("subtest", () => {
+      Utils.specialTest("subtest", () => {
         strictEqual(1 + 1, 2);
       });
     });`;
 
     const result = parseSourceCustom(contents, {
-      testNames: ["test"],
+      testNames: ["specialTest"],
     });
 
     expect(result.length).toEqual(1);

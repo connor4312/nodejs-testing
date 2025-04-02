@@ -149,7 +149,7 @@
           },
           "nodejs-testing.testSpecifiers": {
             "type": "array",
-            "markdownDescription": "_Advanced_: A list of specifiers that indicate test function to search for:\nIt defaults to:\n\n```json\n[\n  {\n    \"import\": \"node:test\",\n    \"name\": [\"default\", \"it\", \"test\", \"describe\", \"suite\"]\n  }\n]\n```\n\nBut in case your test function is wrapped, you can specify it with a relative import:\nNOTE: relative imports must be prefixed with ./\n\n```json\n[\n  {\n    \"import\": \"./test/utils.js\",\n    \"name\": \"test\"\n  }\n]\n```\n",
+            "markdownDescription": "_Advanced_: A list of specifiers that indicate test function to search for:\nIt defaults to:\n\n```json\n[\n  {\n    \"import\": \"node:test\",\n    \"name\": [\"default\", \"it\", \"test\", \"describe\", \"suite\"]\n  }\n]\n```\n\nBut in case your test function is wrapped, you can specify it with a relative import:\nNOTE: relative imports must be prefixed with ./\nNOTE: A `name` of \"default\" is special and means the default export of that module is a test function\n\n```json\n[\n  {\n    \"import\": \"./test/utils.js\",\n    \"name\": \"test\"\n  }\n]\n```\n",
             "default": [
               {
                 "import": "node:test",
@@ -185,7 +185,7 @@
                 },
                 "name": {
                   "type": "array",
-                  "markdownDescription": "A list of functions that are imported from `import` that should be treated as test functions",
+                  "markdownDescription": "A list of functions that are imported from `import` that should be treated as test functions, the special name 'default' refers to the default export of a module",
                   "items": {
                     "type": "string"
                   }
