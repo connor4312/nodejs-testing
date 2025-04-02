@@ -191,10 +191,14 @@ nt("default import test", () => {
     Utils.specialTest("addition", () => {
       strictEqual(1 + 1, 2);
 
+      // this should not be identified as test
+      Utils.log("something")
+
       Utils.specialTest("subtest", () => {
         strictEqual(1 + 1, 2);
       });
-    });`;
+    });
+    `;
 
     const result = parseSourceCustom(contents, {
       testNames: ["specialTest"],

@@ -776,11 +776,11 @@ exports[`extract tests with custom specifiers > extracts star import tests 1`] =
         "location": SourceLocation {
           "end": Position {
             "column": 8,
-            "line": 7,
+            "line": 10,
           },
           "start": Position {
             "column": 6,
-            "line": 5,
+            "line": 8,
           },
         },
         "name": "subtest",
@@ -790,7 +790,7 @@ exports[`extract tests with custom specifiers > extracts star import tests 1`] =
     "location": SourceLocation {
       "end": Position {
         "column": 6,
-        "line": 8,
+        "line": 11,
       },
       "start": Position {
         "column": 4,

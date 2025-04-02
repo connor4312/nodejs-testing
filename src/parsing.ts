@@ -59,19 +59,26 @@ const matchIdentified =
   };
 
 const matchNamespaced =
-  (name: string): ExtractTest =>
+  (objectName: string, validTestNames: Set<string>): ExtractTest =>
   (n) => {
     const callee = unpackCalleeExpression(n);
-    if (callee.type === C.Identifier && callee.name === name) {
+    if (callee.type === C.Identifier && callee.name === objectName) {
       return "test"; // default export, #42
     }
 
-    return callee.type === C.MemberExpression &&
-      callee.object.type === C.Identifier &&
-      callee.object.name === name &&
-      callee.property.type === C.Identifier
-      ? callee.property.name
-      : undefined;
+    if (
+      !(
+        callee.type === C.MemberExpression &&
+        callee.object.type === C.Identifier &&
+        callee.object.name === objectName &&
+        callee.property.type === C.Identifier
+      )
+    ) {
+      return undefined;
+    }
+
+    const calleeName = callee.property.name;
+    return validTestNames.has(calleeName) ? calleeName : undefined;
   };
 
 const getStringish = (nameArg: Node | undefined): string | undefined => {
@@ -156,10 +163,10 @@ function importDeclarationExtractTests(
         // The name "default" is special, it is used when you are trying to
         // target a default export from a file in your workspace
         if (validNames.has("default")) {
-          idTests.push(matchNamespaced(spec.local.name));
+          idTests.push(matchNamespaced(spec.local.name, validNames));
         }
       } else if (specType === C.ImportNamespaceSpecifier) {
-        idTests.push(matchNamespaced(spec.local.name));
+        idTests.push(matchNamespaced(spec.local.name, validNames));
       } else if (specType === C.ImportSpecifier) {
         if (spec.imported.type === C.Identifier) {
           if (validNames.has(spec.imported.name)) {
@@ -217,15 +224,15 @@ function requireCallExtractTests(
       continue;
     }
 
-    if (node.id.type === C.Identifier) {
-      idTests.push(matchNamespaced(node.id.name));
-      continue;
-    }
-
     // Next check to see if the functions imported are tests functions
     const validNames = new Set(
       typeof specifier.name === "string" ? [specifier.name] : specifier.name,
     );
+
+    if (node.id.type === C.Identifier) {
+      idTests.push(matchNamespaced(node.id.name, validNames));
+      continue;
+    }
 
     if (node.id.type === C.ObjectPattern) {
       for (const prop of node.id.properties) {
