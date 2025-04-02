@@ -140,11 +140,19 @@ async function doWork(
       if (nodeVersion.has(Capability.TestForceExit) && forceExit) {
         args.push("--test-force-exit");
       }
-      if (nodeVersion.has(Capability.TestIsolation)) {
+      if (
+        nodeVersion.has(Capability.TestIsolation) ||
+        nodeVersion.has(Capability.ExperimentalTestIsolation)
+      ) {
         // Don't just splat any old value into the command line
         // whitelist them to prevent a shell injection attack
         if (isolation === "process" || isolation === "none") {
-          args.push(`--test-isolation=${isolation}`);
+          // Prefer using --test-isolation if that flag is supported
+          if (nodeVersion.has(Capability.TestIsolation)) {
+            args.push(`--test-isolation=${isolation}`);
+          } else {
+            args.push(`--experimental-test-isolation=${isolation}`);
+          }
         } else {
           console.warn(`Unknown isolation value: ${isolation}`);
         }

@@ -1,7 +1,8 @@
 export const enum Capability {
   ExperimentalSnapshots = 1 << 0,
   TestForceExit = 1 << 1,
-  TestIsolation = 1 << 2,
+  ExperimentalTestIsolation = 1 << 2,
+  TestIsolation = 1 << 3,
 }
 
 export class NodeVersion {
@@ -19,16 +20,21 @@ export class NodeVersion {
       this.capabilities |= Capability.ExperimentalSnapshots;
     }
 
-    // --test-force-exit was added in v22.0.0, and backported in v20.10.0
+    // --test-force-exit was added in v22.0.0, and backported in v20.14.0
     if (
       semver.gte(new Semver(22, 0, 0)) ||
-      (semver.major === 20 && semver.gte(new Semver(20, 10, 0)))
+      (semver.major === 20 && semver.gte(new Semver(20, 14, 0)))
     ) {
       this.capabilities |= Capability.TestForceExit;
     }
 
-    // --test-isolation was added in v22.0.0, and backported in v20.10.0
-    if (semver.gte(new Semver(22, 8, 0))) {
+    // --experimental-test-isolation was added in v22.8.0, and removed in v23.6.0
+    if (semver.gte(new Semver(22, 8, 0)) && semver.lt(new Semver(23, 6, 0))) {
+      this.capabilities |= Capability.ExperimentalTestIsolation;
+    }
+
+    // --test-isolation was added in v23.6.0
+    if (semver.gte(new Semver(23, 6, 0))) {
       this.capabilities |= Capability.TestIsolation;
     }
   }
