@@ -15,7 +15,7 @@ it("discovers tests", async () => {
   const c = await getController();
 
   await expectTestTree(c, [
-    ["hello.test.js", [["math", [["addition"], ["subtraction"]]]]],
+    ["hello.test.js", [["math", [["addition"]]], ["math", [["subtraction"]]]]],
     ["otherFolder", [["some.test.js", [["addition"]]]]],
     ["test", [["inAFolder.js", [["addition"]]]]],
     ["test-WithADash.js", [["addition"]]],
@@ -52,7 +52,7 @@ it("cleans up folder if all child files are deleted", () =>
     await onChange;
 
     await expectTestTree(c, [
-      ["hello.test.js", [["math", [["addition"], ["subtraction"]]]]],
+      ["hello.test.js", [["math", [["addition"]]], ["math", [["subtraction"]]]]],
       ["otherFolder", [["some.test.js", [["addition"]]]]],
       ["test-WithADash.js", [["addition"]]],
       ["test.js", [["addition"]]],
@@ -98,7 +98,7 @@ it("runs tests", async () => {
     "test-WithADash.js/addition": ["started", "passed"],
     "test.js/addition": ["started", "passed"],
     "withADashTheOtherWay-test.js/addition": ["started", "failed"],
-    "hello.test.js/math": ["started", "passed"],
+    "hello.test.js/math": ["started", "passed", "started", "passed"],
     "hello.test.js/math/addition": ["started", "passed"],
     "hello.test.js/math/subtraction": ["started", "passed"],
     "otherFolder/some.test.js/addition": ["started", "passed"],
@@ -126,7 +126,7 @@ it("runs tests in a file", async () => {
   );
 
   run.expectStates({
-    "hello.test.js/math": ["started", "passed"],
+    "hello.test.js/math": ["started", "passed", "started", "passed"],
     "hello.test.js/math/addition": ["started", "passed"],
     "hello.test.js/math/subtraction": ["started", "passed"],
     "withADot.test.js/addition": ["started", "passed"],
@@ -145,7 +145,7 @@ it("runs subsets of tests", async () => {
   const nodeVersion = getNodeVersion();
   if (nodeVersion < 22) {
     run.expectStates({
-      "hello.test.js/math": ["started", "passed"],
+      "hello.test.js/math": ["started", "passed", "started", "passed"],
       "hello.test.js/math/addition": ["started", "passed"],
       // did not work in earlier versions due to nodejs/node#51577
       "hello.test.js/math/subtraction": ["started", "passed"],
@@ -279,7 +279,7 @@ it("handles test excludes", async () => {
     c,
     new vscode.TestRunRequest(
       [c.ctrl.items.get("hello.test.js")!],
-      [c.ctrl.items.get("hello.test.js")!.children.get("math")!.children.get("subtraction")!],
+      [c.ctrl.items.get("hello.test.js")!.children.get("math#0")!.children.get("subtraction")!],
     ),
   );
 
@@ -343,7 +343,7 @@ it("shows test output", async () => {
       },
       {
         output: "another log",
-        location: new vscode.Location(uri, new vscode.Position(10, 20)),
+        location: new vscode.Location(uri, new vscode.Position(12, 20)),
         test: undefined,
       },
     ],

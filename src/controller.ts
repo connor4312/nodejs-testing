@@ -200,20 +200,31 @@ export class Controller {
     const add = (
       parent: vscode.TestItem,
       node: IParsedNode,
+      id: string,
       start: vscode.Location,
       end: vscode.Location,
     ): vscode.TestItem => {
-      let item = parent.children.get(node.name);
+      let item = parent.children.get(id);
       if (!item) {
-        item = this.ctrl.createTestItem(node.name, node.name, start.uri);
+        item = this.ctrl.createTestItem(id, node.name, start.uri);
         testMetadata.set(item, { type: ItemType.Test });
         parent.children.add(item);
       }
       item.range = new vscode.Range(start.range.start, end.range.end);
 
       const seen = new Map<string, vscode.TestItem>();
+      const level2Dupes = new Map<string, vscode.TestItem>();
+      for (const [, sibling] of parent.children) {
+        if (sibling.id == item.id || sibling.label !== node.name) {
+          continue;
+        }
+
+        for (const [, cousin] of sibling.children) {
+          level2Dupes.set(cousin.label, cousin);
+        }
+      }
       for (const child of node.children) {
-        const existing = seen.get(child.name);
+        const existing = seen.get(child.name) || level2Dupes.get(child.name);
         const start = sourceMap.originalPositionFor(
           child.location.start.line,
           child.location.start.column,
@@ -227,7 +238,7 @@ export class Controller {
           continue;
         }
 
-        seen.set(child.name, add(item, child, start, end));
+        seen.set(child.name, add(item, child, child.name, start, end));
       }
 
       for (const [id] of item.children) {
@@ -243,6 +254,7 @@ export class Controller {
     // source file. This is probably a good assumption. Likewise we assume that a single
     // a single describe/test is not split between different files.
     const newTestsInFile = new Map<string, vscode.TestItem>();
+    let nId: number = 0;
     for (const node of tree) {
       const start = sourceMap.originalPositionFor(
         node.location.start.line,
@@ -251,7 +263,14 @@ export class Controller {
       const end = sourceMap.originalPositionFor(node.location.end.line, node.location.end.column);
       const file = last(this.getContainingItemsForFile(start.uri, { compiledFile: uri }))!.item!;
       diagnosticCollection.delete(start.uri);
-      newTestsInFile.set(node.name, add(file, node, start, end));
+      if (newTestsInFile.has(node.name) && ["describe", "suite"].includes(node.fn)) {
+        const id = `${node.name}#${nId++}`;
+        newTestsInFile.set(id, add(file, node, id, start, end));
+      }
+      else {
+        nId = 0;
+        newTestsInFile.set(node.name, add(file, node, node.name, start, end));
+      }
     }
 
     if (previous) {
